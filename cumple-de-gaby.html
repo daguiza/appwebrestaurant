@@ -200,6 +200,7 @@ input,textarea,select,button{font-family:var(--font)}
 <div class="screen" id="screen-admin"><div class="top-bar"><button class="top-bar-back" onclick="goToScreen('landing')">←</button><div class="top-bar-title">Panel de Órdenes</div><button onclick="exportCSV()" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:5px 10px;cursor:pointer;font-family:var(--font)">📥 CSV</button></div><div class="page-wrap" style="padding-top:0"><div class="admin-stats" id="admin-stats"></div><div class="admin-filters" id="admin-filters"></div><div id="admin-orders"></div></div></div>
 
 <div class="modal-overlay" id="confirm-modal"><div class="modal"><div class="modal-icon">🌸</div><div class="modal-title">Confirmar Pedido</div><div class="modal-sub">Revisa tu selección antes de enviar</div><div class="modal-summary" id="modal-summary"></div><div class="modal-btns"><button class="btn-primary" id="btn-submit" onclick="submitOrder()">✓ Confirmar y enviar</button><button class="btn-secondary" onclick="closeModal('confirm-modal')">Volver a editar</button></div></div></div>
+<div class="modal-overlay" id="delete-modal"><div class="modal"><div class="modal-icon">🗑️</div><div class="modal-title">Eliminar Orden</div><div class="modal-sub" id="delete-modal-sub">¿Estás seguro? Esta acción no se puede deshacer.</div><div class="modal-btns"><button class="btn-primary" id="btn-delete-confirm" style="background:var(--red)">Sí, eliminar</button><button class="btn-secondary" onclick="closeModal('delete-modal')">Cancelar</button></div></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -236,15 +237,19 @@ function renderAdminFilters(){document.getElementById('admin-filters').innerHTML
 function filterAdmin(m,b){document.querySelectorAll('.admin-filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');renderAdminOrders(m==='all'?allOrders:allOrders.filter(o=>o.menu===m))}
 function renderAdminOrders(orders){const w=document.getElementById('admin-orders');if(!orders.length){w.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Sin órdenes registradas</div>';return}const mc={A:'var(--sage)',B:'var(--blue)',C:'var(--rose)'},mb={A:'var(--sage-dim)',B:'var(--blue-dim)',C:'var(--rose-dim)'};w.innerHTML=orders.map((o,i)=>`<div class="order-row" onclick="toggleOrderDetail(${i})"><div class="order-row-top"><div class="order-row-id">${o.order_id}</div><div class="order-row-name">${o.nombre} ${o.apellido}</div><span class="order-row-menu" style="background:${mb[o.menu]};color:${mc[o.menu]}">Menú ${o.menu}</span><button onclick="deleteOrder('${o.order_id}',event)" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px 4px;color:var(--muted);transition:color .2s;flex-shrink:0" title="Eliminar orden">🗑️</button></div><div class="order-row-bottom"><span>📞 ${o.telefono}</span><span>$${o.menu_precio||''}</span><span>${o.created_at?new Date(o.created_at).toLocaleDateString('es-VE'):''}</span></div><div class="order-detail" id="order-detail-${i}"><div class="order-detail-row"><span class="order-detail-label">🍸 Trago</span><span>${o.trago_nombre||o.trago}</span></div><div class="order-detail-row"><span class="order-detail-label">🥗 Entrada</span><span>${o.entrada_nombre||o.entrada}</span></div><div class="order-detail-row"><span class="order-detail-label">🍽️ Plato</span><span>${o.plato_nombre||o.plato}</span></div>${o.handrolls_nombres&&o.handrolls_nombres.length?`<div class="order-detail-row"><span class="order-detail-label">🍣 Rolls</span><span>${o.handrolls_nombres.join(', ')}</span></div>`:''}</div></div>`).join('')}
 function toggleOrderDetail(i){document.getElementById('order-detail-'+i).classList.toggle('show')}
-async function deleteOrder(orderId, event) {
+function deleteOrder(orderId, event) {
   event.stopPropagation();
-  if (!confirm('¿Eliminar la orden #' + orderId + '? Esta acción no se puede deshacer.')) return;
-  const {error} = await sb.from('evento_ordenes').delete().eq('order_id', orderId);
-  if (error) { showToast('Error al eliminar'); return; }
-  allOrders = allOrders.filter(o => o.order_id !== orderId);
-  renderAdminStats();
-  renderAdminOrders(allOrders);
-  showToast('Orden #' + orderId + ' eliminada');
+  document.getElementById('delete-modal-sub').textContent = '¿Eliminar la orden #' + orderId + '? Esta acción no se puede deshacer.';
+  document.getElementById('btn-delete-confirm').onclick = async () => {
+    closeModal('delete-modal');
+    const {error} = await sb.from('evento_ordenes').delete().eq('order_id', orderId);
+    if (error) { showToast('Error al eliminar'); return; }
+    allOrders = allOrders.filter(o => o.order_id !== orderId);
+    renderAdminStats();
+    renderAdminOrders(allOrders);
+    showToast('Orden #' + orderId + ' eliminada');
+  };
+  document.getElementById('delete-modal').classList.add('show');
 }
 function exportCSV(){if(!allOrders.length)return;const h=['Orden','Nombre','Apellido','Teléfono','Menú','Precio','Trago','Entrada','Plato','Hand Rolls','Fecha'],r=allOrders.map(o=>[o.order_id,o.nombre,o.apellido,o.telefono,'Menú '+o.menu,'$'+(o.menu_precio||''),o.trago_nombre||o.trago,o.entrada_nombre||o.entrada,o.plato_nombre||o.plato,(o.handrolls_nombres||[]).join(' / '),o.created_at?new Date(o.created_at).toLocaleDateString('es-VE'):'']);let csv='\uFEFF'+h.join(',')+'\n'+r.map(x=>x.map(v=>'"'+(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');const b=new Blob([csv],{type:'text/csv;charset=utf-8;'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='ordenes_cumple_gaby.csv';a.click();URL.revokeObjectURL(u)}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
