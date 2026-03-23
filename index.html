@@ -1,0 +1,2641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>App Inquieto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F0E0C; --card: #1A1917; --border: #2C2A26;
+    --gold: #C8962A; --gold-light: #E8B84B;
+    --text: #F0EDE6; --muted: #7A7568;
+    --green: #4CAF7D; --red: #E05C5C;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; padding-bottom:80px; }
+  .view { display:none; } .view.active { display:block; }
+
+  /* HEADER */
+  .header { background:var(--card); border-bottom:1px solid var(--border); padding:24px 20px 20px; text-align:center; position:relative; }
+  .header::after { content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:50px; height:2px; background:var(--gold); }
+  .header-label { font-family:'DM Sans',sans-serif !important; font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--gold); font-weight:600; margin-bottom:6px; }
+  .header-title { font-family:'DM Serif Display',serif; font-size:26px; }
+  .header-sub { font-size:12px; color:var(--muted); margin-top:4px; }
+
+  /* HOME */
+  .home-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:20px 16px 0; max-width:480px; margin:0 auto; }
+  .area-card { background:var(--card); border:1.5px solid var(--border); border-radius:14px; padding:20px 14px; cursor:pointer; transition:all 0.2s; text-align:center; }
+  .area-card:hover { transform:translateY(-2px); } .area-card:active { transform:none; }
+  .ac-icon { font-size:26px; margin-bottom:8px; } .ac-name { font-family:'DM Sans',sans-serif !important; font-size:13px; font-weight:600; } .ac-count { font-size:11px; color:var(--muted); margin-top:3px; }
+  .area-card.full { grid-column:1/-1; display:flex; align-items:center; justify-content:center; gap:10px; padding:16px; }
+  .area-card.full .ac-icon { font-size:22px; margin:0; } .area-card.full .ac-name { font-family:'DM Sans',sans-serif !important; font-size:14px; }
+
+  .log-btn-wrap { padding:12px 16px 0; max-width:480px; margin:0 auto; }
+  .log-btn { width:100%; padding:13px; background:transparent; border:1.5px solid var(--border); border-radius:10px; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .log-btn:hover { border-color:var(--gold); color:var(--gold); }
+
+  /* FORM */
+  .form-header { background:var(--card); border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; gap:12px; }
+  .back-btn { background:none; border:none; color:var(--muted); cursor:pointer; font-size:22px; line-height:1; padding:0 4px 0 0; }
+  .back-btn:hover { color:var(--text); }
+  .fh-info { flex:1; } .fh-title { font-family:'DM Serif Display',serif; font-size:18px; } .fh-sub { font-size:11px; color:var(--muted); margin-top:1px; }
+  .fh-dot { width:10px; height:10px; border-radius:50%; }
+
+  .container { max-width:480px; margin:0 auto; padding:14px 16px; }
+  .info-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .field { display:flex; flex-direction:column; gap:5px; }
+  .field label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .field input, .field textarea { background:var(--card); border:1.5px solid var(--border); border-radius:8px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:16px; padding:10px 12px; outline:none; transition:border-color 0.2s; }
+  .field input:focus, .field textarea:focus { border-color:var(--gold); }
+  .field textarea { resize:none; height:70px; }
+
+  .section { background:var(--card); border-radius:12px; border:1px solid var(--border); overflow:hidden; margin-bottom:10px; }
+  .section-hdr { padding:11px 14px; display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border); }
+  .sec-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; } .sec-title { font-family:'DM Serif Display',serif !important; font-size:10px; letter-spacing:2px; text-transform:uppercase; font-weight:600; } .sec-count { margin-left:auto; font-size:11px; color:var(--muted); }
+  .item { display:flex; align-items:center; padding:13px 14px; border-bottom:1px solid var(--border); gap:12px; cursor:pointer; user-select:none; }
+  .item:last-child { border-bottom:none; }
+  .cb { width:22px; height:22px; border-radius:5px; border:2px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--bg); transition:all 0.18s; }
+  .cb svg { opacity:0; transition:opacity 0.15s; }
+  .item.checked .cb { background:var(--green); border-color:var(--green); } .item.checked .cb svg { opacity:1; }
+  .item.checked .item-label { color:var(--muted); text-decoration:line-through; }
+  .item-label { font-size:14px; color:var(--text); flex:1; transition:color 0.2s; }
+
+  .monto-wrap { background:var(--card); border-radius:12px; border:1px solid var(--border); padding:14px; margin-bottom:10px; }
+  .monto-lbl { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; display:block; margin-bottom:8px; }
+  .monto-row { display:flex; align-items:center; gap:8px; }
+  .curr { background:var(--border); color:var(--muted); border-radius:6px; padding:9px 11px; font-size:14px; font-weight:700; }
+  .monto-row input { flex:1; background:var(--bg); border:1.5px solid var(--border); border-radius:8px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:18px; font-weight:600; padding:9px 12px; outline:none; transition:border-color 0.2s; }
+  .monto-row input:focus { border-color:var(--gold); }
+
+  .prog-wrap { background:var(--card); border-radius:12px; border:1px solid var(--border); padding:13px; margin-bottom:11px; }
+  .prog-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .prog-row span { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .prog-pct { font-family:'DM Serif Display',serif; font-size:20px; color:var(--gold); }
+  .prog-track { height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .prog-fill { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold-light)); border-radius:3px; transition:width 0.4s cubic-bezier(0.34,1.56,0.64,1); width:0%; }
+  .prog-fill.done { background:linear-gradient(90deg,var(--green),#6EE7A0); }
+
+  .btn-send { width:100%; padding:15px; background:#25D366; color:#fff; border:none; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; transition:all 0.2s; }
+  .btn-send:hover { background:#1fb855; transform:translateY(-1px); } .btn-send:active { transform:none; }
+
+  .warn-box { background:rgba(224,92,92,0.1); border:1px solid rgba(224,92,92,0.3); border-radius:9px; padding:11px 13px; font-size:13px; color:var(--red); margin-bottom:10px; display:none; gap:7px; align-items:center; }
+  .warn-box.show { display:flex; }
+
+  /* PERFIL SETUP */
+  .perfil-wrap { max-width:420px; margin:0 auto; padding:20px 16px; }
+  .perfil-title { font-family:'DM Serif Display',serif; font-size:22px; margin-bottom:6px; text-align:center; }
+  .perfil-sub { font-size:13px; color:var(--muted); text-align:center; margin-bottom:24px; line-height:1.6; }
+  .perfil-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px; }
+  .perfil-option { background:var(--card); border:2px solid var(--border); border-radius:14px; padding:18px 12px; cursor:pointer; text-align:center; transition:all 0.2s; position:relative; }
+  .perfil-option:hover { transform:translateY(-2px); }
+  .perfil-option.selected { border-color:var(--gold); background:rgba(200,150,42,0.08); }
+  .perfil-option .po-check { position:absolute; top:8px; right:8px; width:18px; height:18px; border-radius:50%; background:var(--gold); display:none; align-items:center; justify-content:center; }
+  .perfil-option.selected .po-check { display:flex; }
+  .perfil-option .po-icon { font-size:24px; margin-bottom:6px; }
+  .perfil-option .po-name { font-size:12px; font-weight:600; }
+  .perfil-option .po-count { font-size:10px; color:var(--muted); margin-top:2px; }
+  .perfil-option.full { grid-column:1/-1; display:flex; align-items:center; gap:12px; padding:14px 16px; text-align:left; }
+  .perfil-option.full .po-icon { font-size:20px; margin:0; }
+  .perfil-option.full .po-check { position:static; margin-left:auto; flex-shrink:0; }
+  .btn-perfil-save { width:100%; padding:15px; background:var(--gold); color:#fff; border:none; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:all 0.2s; }
+  .btn-perfil-save:hover { background:var(--gold-light); }
+  .btn-perfil-save:disabled { opacity:0.4; cursor:not-allowed; }
+
+  /* ADMIN PERFILES TABLE */
+  .admin-section { max-width:480px; margin:0 auto; padding:16px; }
+  .admin-section-title { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-bottom:12px; margin-top:8px; }
+  .empleado-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:8px; }
+  .empleado-hdr { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .empleado-avatar { width:34px; height:34px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+  .empleado-info { flex:1; }
+  .empleado-nombre { font-size:14px; font-weight:600; }
+  .empleado-email { font-size:11px; color:var(--muted); }
+  .empleado-areas { display:flex; flex-wrap:wrap; gap:6px; }
+  .area-tag { font-size:11px; font-weight:600; padding:4px 10px; border-radius:20px; border:1.5px solid; cursor:pointer; transition:all 0.15s; opacity:0.4; }
+  .area-tag.active { opacity:1; }
+
+  /* AUTH SCREEN */
+  .auth-screen { min-height:100vh; display:flex; flex-direction:column; position:relative; overflow:hidden; background:var(--bg); }
+  
+  /* Decorative background orbs */
+  .auth-orb1 { position:absolute; top:-100px; right:-80px; width:280px; height:280px; border-radius:50%; background:radial-gradient(circle, rgba(200,150,42,0.18) 0%, transparent 70%); pointer-events:none; }
+  .auth-orb2 { position:absolute; top:160px; left:-60px; width:180px; height:180px; border-radius:50%; background:radial-gradient(circle, rgba(200,150,42,0.08) 0%, transparent 70%); pointer-events:none; }
+  .auth-orb3 { position:absolute; bottom:200px; right:-40px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle, rgba(232,184,75,0.1) 0%, transparent 70%); pointer-events:none; }
+
+  /* Top section */
+  .auth-top { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 32px 40px; text-align:center; position:relative; z-index:1; }
+  .auth-logo-wrap { width:90px; height:90px; border-radius:24px; background:var(--card); border:1px solid rgba(200,150,42,0.3); display:flex; align-items:center; justify-content:center; margin:0 auto 28px; box-shadow:0 8px 32px rgba(200,150,42,0.15); }
+  .auth-logo-wrap img { height:60px; width:auto; }
+  .auth-app-name { font-size:10px; letter-spacing:4px; text-transform:uppercase; color:var(--gold); font-weight:700; margin-bottom:12px; }
+  .auth-headline { font-family:'DM Serif Display',serif; font-size:34px; line-height:1.15; margin-bottom:14px; }
+  .auth-headline em { color:var(--gold); font-style:normal; }
+  .auth-tagline { font-size:13px; color:var(--muted); line-height:1.7; max-width:260px; margin:0 auto; }
+
+  /* Bottom card */
+  .auth-bottom { position:relative; z-index:1; background:var(--card); border-radius:28px 28px 0 0; border-top:1px solid var(--border); padding:28px 24px 44px; }
+  
+  /* Mode tabs */
+  .auth-tabs { display:flex; background:var(--bg); border-radius:12px; padding:4px; margin-bottom:24px; gap:4px; }
+  .auth-tab { flex:1; padding:10px; border:none; border-radius:9px; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; }
+  .auth-tab.active { background:var(--card); color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,0.3); }
+
+  .btn-google { width:100%; padding:13px; background:#fff; color:#1f1f1f; border:none; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; transition:all 0.2s; margin-bottom:14px; }
+  .btn-google:hover { background:#f0f0f0; transform:translateY(-1px); }
+  .btn-google svg { flex-shrink:0; }
+
+  .auth-divider { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .auth-divider-line { flex:1; height:1px; background:var(--border); }
+  .auth-divider span { font-size:10px; letter-spacing:1px; color:var(--muted); font-weight:600; }
+
+  .auth-field { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+  .auth-field label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .auth-field input { background:var(--bg); border:1.5px solid var(--border); border-radius:10px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:16px; padding:12px 14px; outline:none; transition:border-color 0.2s; width:100%; }
+  .auth-field input:focus { border-color:var(--gold); }
+
+  .btn-email-auth { width:100%; padding:14px; background:var(--gold); color:#fff; border:none; border-radius:12px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700; cursor:pointer; transition:all 0.2s; margin-top:6px; }
+  .btn-email-auth:hover { background:var(--gold-light); transform:translateY(-1px); }
+  .btn-email-auth:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+  .auth-err { font-size:13px; color:var(--red); text-align:center; margin-top:10px; min-height:16px; }
+  .auth-success { font-size:13px; color:var(--green); text-align:center; margin-top:10px; }
+
+  .auth-avatar { width:32px; height:32px; border-radius:50%; object-fit:cover; border:1.5px solid var(--border); }
+  .auth-avatar-placeholder { width:32px; height:32px; border-radius:50%; background:var(--gold); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#fff; flex-shrink:0; }
+  .auth-name { font-size:13px; font-weight:600; flex:1; text-align:left; }
+  .auth-signout { background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; font-family:'DM Sans',sans-serif; }
+  .auth-signout:hover { color:var(--red); }
+
+  .cl-item-row { display:flex; align-items:center; gap:8px; }
+  .cl-drag { color:var(--muted); cursor:grab; font-size:16px; flex-shrink:0; }
+
+  @keyframes authFadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .auth-top > * { opacity:0; animation:authFadeUp 0.5s forwards; }
+  .auth-logo-wrap  { animation-delay:0.1s; }
+  .auth-app-name   { animation-delay:0.2s; }
+  .auth-headline   { animation-delay:0.3s; }
+  .auth-tagline    { animation-delay:0.4s; }
+
+  /* LOGIN */
+  .login-wrap { max-width:360px; margin:60px auto 0; padding:0 16px; }
+  .login-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:32px 24px; }
+  .login-icon { font-size:40px; text-align:center; margin-bottom:16px; }
+  .login-title { font-family:'DM Serif Display',serif; font-size:22px; text-align:center; margin-bottom:6px; }
+  .login-sub { font-size:13px; color:var(--muted); text-align:center; margin-bottom:24px; }
+  .login-field { display:flex; flex-direction:column; gap:5px; margin-bottom:12px; }
+  .login-field label { font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); font-weight:600; }
+  .login-field input { background:var(--bg); border:1.5px solid var(--border); border-radius:8px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:16px; padding:12px 14px; outline:none; transition:border-color 0.2s; }
+  .login-field input:focus { border-color:var(--gold); }
+  .login-btn { width:100%; padding:14px; background:var(--gold); color:#fff; border:none; border-radius:11px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:700; cursor:pointer; margin-top:8px; transition:background 0.2s; }
+  .login-btn:hover { background:var(--gold-light); }
+  .login-err { font-size:13px; color:var(--red); text-align:center; margin-top:10px; min-height:18px; }
+
+  /* LOG VIEW */
+  .log-hdr { background:var(--card); border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; gap:12px; }
+  .log-hdr-title { font-family:'DM Serif Display',serif; font-size:18px; flex:1; }
+  .logout-btn { background:none; border:1px solid var(--border); border-radius:7px; color:var(--muted); cursor:pointer; font-family:'DM Sans',sans-serif; font-size:12px; padding:6px 10px; }
+  .logout-btn:hover { border-color:var(--red); color:var(--red); }
+
+  /* LOG FILTERS — tab style, no scrollbar */
+  .log-filters { max-width:480px; margin:0 auto; padding:0; display:flex; border-bottom:1px solid var(--border); background:var(--card); }
+  .filter-btn { flex:1; padding:12px 4px; border:none; border-bottom:2px solid transparent; background:transparent; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; cursor:pointer; transition:all 0.2s; letter-spacing:0.3px; white-space:nowrap; }
+  .filter-btn:hover { color:var(--text); }
+  .filter-btn.active { color:var(--gold); border-bottom-color:var(--gold); }
+
+  /* LOG BODY */
+  .log-wrap { max-width:480px; margin:0 auto; padding:16px 16px 0; }
+  .log-empty { text-align:center; padding:48px 20px; color:var(--muted); font-size:14px; line-height:1.8; }
+  .log-loading { text-align:center; padding:40px; color:var(--muted); font-size:13px; }
+
+  /* DATE GROUP */
+  .log-date-group { margin-bottom:24px; }
+  .log-date-label { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .log-date-label span { font-size:11px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  .log-date-line { flex:1; height:1px; background:var(--border); }
+
+  /* LOG ENTRY */
+  .log-entry { background:var(--card); border:1px solid var(--border); border-radius:12px; margin-bottom:8px; overflow:hidden; }
+  .log-entry-hdr { display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border); }
+  .log-dot2 { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .log-area-name { font-family:'DM Serif Display',serif !important; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; }
+  .log-hora { margin-left:auto; font-size:11px; color:var(--muted); font-weight:500; }
+  .log-who { font-family:'DM Sans',sans-serif !important; font-size:12px; font-weight:600; color:var(--text); margin-left:4px; }
+
+  .log-rows { padding:10px 14px; display:flex; flex-direction:column; gap:4px; }
+  .log-row { font-size:12px; display:flex; gap:7px; align-items:flex-start; line-height:1.4; }
+  .log-row.ok { color:var(--green); } .log-row.fail { color:var(--red); }
+  .log-row-badge { font-size:10px; font-weight:700; flex-shrink:0; margin-top:1px; }
+
+  .log-footer { padding:10px 14px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .log-status { font-family:'DM Sans',sans-serif !important; font-size:11px; font-weight:700; } .log-status.ok { color:var(--green); } .log-status.fail { color:var(--red); }
+  .log-monto { font-size:11px; color:var(--gold); font-weight:600; }
+  .log-note { font-size:11px; color:var(--muted); font-style:italic; width:100%; padding-top:4px; border-top:1px solid var(--border); margin-top:2px; }
+
+  /* MODAL */
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; display:flex; align-items:center; justify-content:center; padding:24px; opacity:0; pointer-events:none; transition:opacity 0.2s; }
+  .modal-overlay.show { opacity:1; pointer-events:all; }
+  .modal { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:28px 24px 20px; max-width:320px; width:100%; transform:scale(0.92) translateY(10px); transition:transform 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+  .modal-overlay.show .modal { transform:scale(1) translateY(0); }
+  .modal-icon { font-size:36px; text-align:center; margin-bottom:14px; }
+  .modal-title { font-family:'DM Serif Display',serif; font-size:20px; text-align:center; margin-bottom:6px; }
+  .modal-sub { font-size:13px; color:var(--muted); text-align:center; line-height:1.6; margin-bottom:20px; }
+  .modal-info { background:var(--bg); border-radius:10px; padding:12px 14px; margin-bottom:20px; display:flex; flex-direction:column; gap:5px; }
+  .modal-info-row { display:flex; justify-content:space-between; font-size:12px; }
+  .modal-info-row span:first-child { color:var(--muted); } .modal-info-row span:last-child { font-weight:600; }
+  .modal-btns { display:flex; flex-direction:column; gap:8px; }
+  .modal-btn-yes { width:100%; padding:14px; background:#25D366; color:#fff; border:none; border-radius:11px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .modal-btn-yes:hover { background:#1fb855; }
+  .modal-btn-no { width:100%; padding:12px; background:transparent; color:var(--muted); border:1.5px solid var(--border); border-radius:11px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer; }
+  .modal-btn-no:hover { border-color:var(--red); color:var(--red); }
+
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(70px); background:var(--card); border:1px solid var(--green); color:var(--green); padding:11px 20px; border-radius:10px; font-size:13px; font-weight:600; transition:transform 0.3s; z-index:1100; white-space:nowrap; pointer-events:none; }
+  .toast.show { transform:translateX(-50%) translateY(0); }
+
+  /* THANK YOU */
+  .ty-wrap { max-width:380px; margin:0 auto; padding:48px 24px; text-align:center; }
+  .ty-stars { font-size:13px; letter-spacing:6px; color:var(--gold); margin-bottom:28px; opacity:0; animation:fadeUp 0.6s 0.2s forwards; }
+  .ty-icon { font-size:64px; margin-bottom:24px; opacity:0; animation:popIn 0.5s 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+  .ty-title { font-family:'DM Serif Display',serif; font-size:28px; line-height:1.2; margin-bottom:16px; opacity:0; animation:fadeUp 0.6s 0.6s forwards; }
+  .ty-title span { color:var(--gold); }
+  .ty-msg { font-size:15px; color:var(--muted); line-height:1.8; margin-bottom:12px; opacity:0; animation:fadeUp 0.6s 0.8s forwards; }
+  .ty-name { font-size:14px; color:var(--text); font-weight:600; opacity:0; animation:fadeUp 0.6s 1s forwards; margin-bottom:36px; }
+  .ty-divider { width:40px; height:1px; background:var(--border); margin:28px auto; opacity:0; animation:fadeUp 0.6s 1s forwards; }
+  .ty-sub { font-family:'DM Sans',sans-serif !important; font-size:12px; color:var(--muted); letter-spacing:1px; text-transform:uppercase; opacity:0; animation:fadeUp 0.6s 1.1s forwards; margin-bottom:28px; }
+  .ty-btn { display:inline-block; padding:13px 28px; background:transparent; border:1.5px solid var(--border); border-radius:10px; color:var(--muted); font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.2s; opacity:0; animation:fadeUp 0.6s 1.2s forwards; }
+  .ty-btn:hover { border-color:var(--gold); color:var(--gold); }
+  .ty-wa-btn { opacity:0; animation:fadeUp 0.6s 1.2s forwards; margin-top:8px; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes popIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
+</style>
+</head>
+<body>
+<div id="splash" style="position:fixed;inset:0;background:#0F0E0C;display:flex;align-items:center;justify-content:center;z-index:9999;">
+  <div style="width:40px;height:40px;border:3px solid #2C2A26;border-top-color:#C8962A;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+<!-- ═══ AUTH ═══ -->
+<div class="view" id="view-auth">
+  <div class="auth-screen">
+    <div class="auth-orb1"></div>
+    <div class="auth-orb2"></div>
+    <div class="auth-orb3"></div>
+
+    <div class="auth-top">
+      <div class="auth-logo-wrap">
+        <img src="https://i.imgur.com/0LZaFfZ.png" alt="Inquieto">
+      </div>
+      <div class="auth-app-name">App Inquieto</div>
+      <div class="auth-headline">Tu turno,<br><em>tu cierre.</em></div>
+      <div class="auth-tagline">Registra tus actividades al final de cada turno de forma rápida y sencilla.</div>
+    </div>
+
+    <div class="auth-bottom">
+      <!-- Tabs: Entrar / Registrarse -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Iniciar sesión</button>
+        <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Crear cuenta</button>
+      </div>
+
+      <!-- Google -->
+      <button class="btn-google" onclick="loginGoogle()">
+        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Continuar con Google
+      </button>
+
+      <div class="auth-divider">
+        <div class="auth-divider-line"></div>
+        <span>O</span>
+        <div class="auth-divider-line"></div>
+      </div>
+
+      <!-- Email fields -->
+      <!-- REGISTRO -->
+      <div id="auth-register-fields" style="display:none">
+        <div class="auth-field">
+          <label>Nombre completo</label>
+          <input type="text" id="auth-nombre" placeholder="Ej: María López" autocomplete="name">
+        </div>
+        <div class="auth-field">
+          <label>Correo electrónico</label>
+          <input type="email" id="auth-email" placeholder="tu@correo.com" autocomplete="email">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div class="auth-field">
+            <label>Usuario</label>
+            <input type="text" id="auth-username" placeholder="ej: maria23" autocomplete="username" style="margin:0">
+          </div>
+          <div class="auth-field">
+            <label>Teléfono</label>
+            <input type="tel" id="auth-telefono" placeholder="04141234567" autocomplete="tel" style="margin:0">
+          </div>
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="auth-pass-reg" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+        </div>
+      </div>
+
+      <!-- LOGIN -->
+      <div id="auth-login-fields">
+        <div class="auth-field">
+          <label>Usuario o teléfono</label>
+          <input type="text" id="auth-login-id" placeholder="ej: maria23 o 04141234567" autocomplete="username" onkeydown="if(event.key==='Enter') doEmailAuth()">
+        </div>
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') doEmailAuth()">
+        </div>
+      </div>
+
+      <button class="btn-email-auth" id="btn-email-auth" onclick="doEmailAuth()">Entrar</button>
+      <div class="auth-err" id="auth-err"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PERFIL SETUP ═══ -->
+<div class="view" id="view-perfil">
+  <div class="header">
+    <img src="https://i.imgur.com/0LZaFfZ.png" style="height:60px;width:auto;display:block;margin:0 auto 12px;opacity:0.95;" alt="Inquieto">
+    <div class="header-label" id="perfil-header-label">Primera vez</div>
+    <div class="header-title">Tu perfil</div>
+    <div class="header-sub" id="perfil-header-sub">Elige las áreas que manejas hoy</div>
+  </div>
+  <div style="max-width:420px;margin:0 auto;padding:12px 16px 0;display:flex;justify-content:flex-start;" id="perfil-back-wrap">
+    <button onclick="goHome()" style="background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;display:none;" id="perfil-back-btn">← Volver sin cambiar</button>
+  </div>
+  <div class="perfil-wrap">
+    <div class="perfil-sub" id="perfil-sub-text">Selecciona una o varias áreas. Puedes cambiarlo cuando quieras desde el inicio — si mañana haces barra en vez de cocina, solo actualiza tu perfil. 👌</div>
+    <div class="perfil-grid" id="perfil-grid"></div>
+    <button class="btn-perfil-save" id="btn-perfil-save" onclick="guardarPerfil()" disabled>Guardar y continuar</button>
+  </div>
+</div>
+
+<!-- ═══ HOME ═══ -->
+<div class="view active" id="view-home">
+  <div class="header">
+    <img src="https://i.imgur.com/0LZaFfZ.png" style="height:80px;width:auto;display:block;margin:0 auto 12px;opacity:0.95;" alt="Inquieto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="auth-avatar-placeholder" id="home-avatar" style="width:36px;height:36px;font-size:14px;">?</div>
+        <span class="auth-name" id="home-username" style="font-size:13px;">—</span>
+      </div>
+      <button class="auth-signout" onclick="doSignOut()" style="font-size:12px;color:var(--muted);">Salir</button>
+    </div>
+    <div class="header-label">App Inquieto</div>
+    <div class="header-title">Cierre de Turno</div>
+    <div class="header-sub" id="fecha-display"></div>
+  </div>
+  <div class="home-grid" id="home-grid">
+    <!-- Se rellena dinámicamente según el perfil del usuario -->
+  </div>
+  <div class="log-btn-wrap">
+    <button class="log-btn" onclick="abrirCambiarPerfil()" style="margin-bottom:6px;border-color:var(--gold);color:var(--gold);">✏️ Cambiar mis áreas hoy</button>
+    <button class="log-btn" id="inventario-btn" onclick="abrirInventario()" style="margin-bottom:6px;border-color:#5B8FA8;color:#5B8FA8;display:none;flex-direction:column;align-items:center;gap:3px;padding:12px 16px;">
+      <span>📋 Inventario de activos</span>
+      <span id="inv-btn-meta" style="font-size:11px;color:var(--muted);font-weight:400;"></span>
+    </button>
+    <div style="font-size:11px;color:var(--muted);text-align:center;padding:0 8px 8px;line-height:1.5;">¿Hoy trabajas en un área diferente? Actualiza tu perfil antes de empezar.</div>
+    <button class="log-btn" onclick="showView('sugerencias')" style="margin-bottom:8px;">💬 Sugerencias o reclamos</button>
+    <button class="log-btn" id="admin-btn" onclick="goAdmin()" style="display:none">🔐 Panel de administrador</button>
+  </div>
+</div>
+
+<!-- ═══ SELECTOR DE TURNO ═══ -->
+<div class="view" id="view-turno">
+  <div class="form-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="fh-info">
+      <div class="fh-title" id="turno-area-title"></div>
+      <div class="fh-sub">¿Qué turno estás haciendo?</div>
+    </div>
+    <div class="fh-dot" id="turno-dot"></div>
+  </div>
+  <div class="container" style="padding-top:32px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:340px;margin:0 auto;">
+      <div onclick="confirmarTurno('apertura')" id="turno-btn-apertura"
+        style="background:var(--card);border:2px solid var(--border);border-radius:16px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.2s;">
+        <div style="font-size:36px;margin-bottom:10px;">🌅</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Apertura</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Inicio de turno</div>
+      </div>
+      <div onclick="confirmarTurno('cierre')" id="turno-btn-cierre"
+        style="background:var(--card);border:2px solid var(--border);border-radius:16px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.2s;">
+        <div style="font-size:36px;margin-bottom:10px;">🌙</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text);">Cierre</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Fin de turno</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ FORM ═══ -->
+<div class="view" id="view-form">
+  <div class="form-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="fh-info"><div class="fh-title" id="fh-title"></div><div class="fh-sub" id="fh-sub"></div></div>
+    <div class="fh-dot" id="fh-dot"></div>
+  </div>
+  <div class="container">
+    <div class="info-row">
+      <div class="field"><label>Tu nombre</label><input type="text" id="nombre" placeholder="Ej: María López"></div>
+      <div class="field"><label id="hora-label">Hora</label><input type="time" id="hora"></div>
+    </div>
+    <div id="checklist-wrap"></div>
+    <div id="monto-wrap" style="display:none"><input type="hidden" id="monto" value=""></div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Observaciones (opcional)</label>
+      <textarea id="notas" placeholder="Ej: Nevera 2 hace ruido, falta un mantel..."></textarea>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-row"><span>Progreso del cierre</span><span class="prog-pct" id="pct">0%</span></div>
+      <div class="prog-track"><div class="prog-fill" id="fill"></div></div>
+    </div>
+    <div class="warn-box" id="warnbox"><span>!</span><span id="warn-txt"></span></div>
+    <button class="btn-send" onclick="enviar()" style="background:var(--gold)">
+      ✓ Confirmar que hice mis actividades
+    </button>
+  </div>
+</div>
+
+
+
+<!-- ═══ LOG ═══ -->
+<div class="view" id="view-log">
+  <div class="log-hdr">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="log-hdr-title">Panel Admin</div>
+    <button class="logout-btn" onclick="doLogout()">Salir</button>
+  </div>
+  <div class="log-filters" id="log-filters" style="overflow-x:auto;">
+    <button class="filter-btn active" onclick="showAdminTab('cierres', this)">📋 Cierres</button>
+    <button class="filter-btn" onclick="showAdminTab('empleados', this)">👥 Empleados</button>
+    <button class="filter-btn" onclick="showAdminTab('checklists', this)">✏️ Checklists</button>
+    <button class="filter-btn" onclick="showAdminTab('config', this)">⚙️ Config</button>
+    <button class="filter-btn" onclick="showAdminTab('inventario', this)">📋 Inventario</button>
+  </div>
+
+  <!-- TAB: CIERRES -->
+  <div id="admin-tab-cierres">
+    <div id="cierres-filter-wrap" style="max-width:480px;margin:0 auto;padding:12px 16px 0;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="filter-btn active" style="flex:none;border:1px solid var(--border);border-radius:8px;padding:7px 12px;" onclick="filterLog('all', this)">Todos</button>
+    </div>
+    <div class="log-wrap" id="log-wrap"></div>
+  </div>
+
+  <!-- TAB: EMPLEADOS -->
+  <div id="admin-tab-empleados" style="display:none;">
+    <div class="admin-section">
+      <div class="admin-section-title">Empleados registrados</div>
+      <div id="empleados-wrap"><div class="log-loading">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- TAB: CONFIG -->
+  <div id="admin-tab-config" style="display:none;">
+    <div class="admin-section">
+      <div class="admin-section-title">Correo de reportes</div>
+      <div class="empleado-card">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Cada vez que un empleado confirme un cierre, se enviará un reporte a este correo.</p>
+        <div class="field" style="margin-bottom:12px;">
+          <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;">Email de reportes</label>
+          <input type="email" id="config-email" placeholder="tu@correo.com"
+            style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:12px 14px;outline:none;width:100%;margin-top:6px;">
+        </div>
+        <button onclick="guardarConfigEmail()"
+          style="width:100%;padding:13px;background:var(--gold);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          Guardar correo
+        </button>
+        <div id="config-msg" style="font-size:13px;text-align:center;margin-top:10px;min-height:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- TAB: INVENTARIO -->
+  <div id="admin-tab-inventario" style="display:none;">
+    <div class="admin-section">
+      <div style="margin-bottom:12px;margin-top:8px;">
+        <div class="admin-section-title" style="margin:0;">Ítems del inventario</div>
+      </div>
+      <div class="empleado-card">
+        <div id="inv-admin-items">
+          <div style="color:var(--muted);font-size:13px;padding:8px 0;">Cargando...</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="text" id="inv-nuevo-item" placeholder="Nombre del ítem (ej: Tenedores)"
+            onkeydown="if(event.key==='Enter') agregarItemInventario()"
+            style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none;">
+          <button onclick="agregarItemInventario()" style="padding:10px 16px;background:#5B8FA8;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">+ Agregar</button>
+        </div>
+      </div>
+
+      <div class="admin-section-title" style="margin-top:20px;">Responsables del inventario</div>
+      <div class="empleado-card">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Empleados que recibirán recordatorios del inventario semanal.</div>
+        <div id="inv-asignados-wrap"></div>
+      </div>
+
+      <div class="admin-section-title" style="margin-top:20px;">Historial de inventarios</div>
+      <div id="inv-historial-wrap"></div>
+    </div>
+
+    <div class="admin-section" style="margin-top:4px;">
+      <div class="admin-section-title">Configuración del inventario</div>
+      <div class="empleado-card">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Define cuándo se realiza el inventario semanal. El sistema enviará recordatorios y alertas automáticamente según esta configuración.</p>
+
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:12px;">
+          <div style="display:flex;gap:12px;">
+            <div style="flex:1;min-width:0;">
+              <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">Día del inventario</label>
+              <select id="config-inv-dia"
+                style="-webkit-appearance:none;appearance:none;display:block;width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 10px;outline:none;box-sizing:border-box;">
+                <option value="1">Lunes</option>
+                <option value="2">Martes</option>
+                <option value="3">Miércoles</option>
+                <option value="4">Jueves</option>
+                <option value="5">Viernes</option>
+                <option value="6">Sábado</option>
+                <option value="0">Domingo</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">Hora límite</label>
+              <input type="text" id="config-inv-hora" value="" placeholder="cargando..." maxlength="5"
+                style="display:block;width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 10px;outline:none;box-sizing:border-box;"
+                >
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+          <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;display:block;margin-bottom:6px;">Hora de alerta (si no se ha hecho)</label>
+          <input type="text" id="config-inv-hora-alerta" value="" placeholder="cargando..." maxlength="5"
+            style="display:block;width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 12px;outline:none;box-sizing:border-box;"
+            >
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;">Si el inventario no se ha completado a esta hora, se enviará una alerta al correo de reportes.</div>
+        </div>
+
+        <button onclick="guardarConfigInventario()"
+          style="width:100%;padding:13px;background:#5B8FA8;color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;">
+          Guardar configuración
+        </button>
+        <div id="config-inv-msg" style="font-size:13px;text-align:center;margin-top:10px;min-height:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: CHECKLISTS -->
+  <div id="admin-tab-checklists" style="display:none;">
+    <div class="admin-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:8px;">
+        <div class="admin-section-title" style="margin:0;">Editor de Checklists</div>
+        <button onclick="mostrarFormNuevaArea()" id="btn-nueva-area"
+          style="padding:7px 14px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">+ Nueva área</button>
+      </div>
+
+      <!-- Formulario nueva área -->
+      <div id="form-nueva-area" style="display:none;background:var(--card);border:1.5px solid var(--gold);border-radius:12px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);font-weight:600;margin-bottom:12px;">Nueva área</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+          <div>
+            <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px;">Nombre</div>
+            <input type="text" id="nueva-area-nombre" placeholder="Ej: Limpieza"
+              style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;box-sizing:border-box;">
+          </div>
+          <div>
+            <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:5px;">Ícono (emoji)</div>
+            <input type="text" id="nueva-area-icono" placeholder="🧹" maxlength="4"
+              style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:20px;padding:9px 12px;outline:none;box-sizing:border-box;">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px;">Color</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <div onclick="selectNuevaAreaColor('#C8962A',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#C8962A;cursor:pointer;border:3px solid white;"></div>
+            <div onclick="selectNuevaAreaColor('#9B8ED8',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#9B8ED8;cursor:pointer;border:3px solid transparent;"></div>
+            <div onclick="selectNuevaAreaColor('#5B8FA8',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#5B8FA8;cursor:pointer;border:3px solid transparent;"></div>
+            <div onclick="selectNuevaAreaColor('#4CAF7D',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#4CAF7D;cursor:pointer;border:3px solid transparent;"></div>
+            <div onclick="selectNuevaAreaColor('#E8B84B',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#E8B84B;cursor:pointer;border:3px solid transparent;"></div>
+            <div onclick="selectNuevaAreaColor('#E05C5C',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#E05C5C;cursor:pointer;border:3px solid transparent;"></div>
+            <div onclick="selectNuevaAreaColor('#7A7568',this)" class="color-opt" style="width:28px;height:28px;border-radius:50%;background:#7A7568;cursor:pointer;border:3px solid transparent;"></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="crearNuevaArea()"
+            style="flex:1;padding:11px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">✓ Crear área</button>
+          <button onclick="ocultarFormNuevaArea()"
+            style="padding:11px 16px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Area selector (se genera dinámicamente) -->
+      <div id="area-tab-buttons" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+      <!-- Toggle apertura/cierre -->
+      <div style="display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:14px;gap:4px;">
+        <button onclick="selectTipoEditor('apertura')" id="editor-tab-apertura"
+          style="flex:1;padding:9px;border:none;border-radius:7px;background:var(--card);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.3);">
+          🌅 Apertura
+        </button>
+        <button onclick="selectTipoEditor('cierre')" id="editor-tab-cierre"
+          style="flex:1;padding:9px;border:none;border-radius:7px;background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">
+          🌙 Cierre
+        </button>
+      </div>
+
+      <!-- Items editor -->
+      <div class="empleado-card" style="margin-bottom:12px;">
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:10px;">Ítems del checklist</div>
+        <div id="checklist-editor-items"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input type="text" id="new-item-input" placeholder="Nuevo ítem..." style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none;" onkeydown="if(event.key==='Enter') agregarItem()">
+          <button onclick="agregarItem()" style="padding:10px 16px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">+ Agregar</button>
+        </div>
+      </div>
+      <!-- Inputs personalizados -->
+      <div class="empleado-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;">Campos adicionales (inputs)</div>
+          <div id="inputs-turno-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--bg);color:var(--gold);border:1px solid var(--gold);">🌅 Apertura</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">Campos que el empleado debe llenar en este turno, como montos o cantidades.</div>
+        <div id="inputs-editor-items"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+          <input type="text" id="new-input-label" placeholder="Nombre del campo (ej: Ingreso)" style="flex:1;min-width:120px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none;" onkeydown="if(event.key==='Enter') agregarInput()">
+          <select id="new-input-tipo" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:10px 12px;outline:none;">
+            <option value="text">Texto</option>
+            <option value="number">Número</option>
+            <option value="dinero">Dinero</option>
+          </select>
+          <button onclick="agregarInput()" style="padding:10px 16px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">+ Agregar</button>
+        </div>
+      </div>
+      <!-- Botón eliminar área al final -->
+      <button onclick="confirmarEliminarArea()"
+        style="width:100%;margin-top:4px;padding:13px;background:transparent;color:var(--red);border:1.5px solid var(--red);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;opacity:0.8;">
+        🗑 Eliminar esta área
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SUGERENCIAS ═══ -->
+<div class="view" id="view-sugerencias">
+  <div class="form-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="fh-info">
+      <div class="fh-title">Sugerencias y reclamos</div>
+      <div class="fh-sub">Tu opinión nos ayuda a mejorar</div>
+    </div>
+    <div class="fh-dot" style="background:var(--gold)"></div>
+  </div>
+  <div class="container">
+
+    <!-- Tipo -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+      <div class="sug-type-btn selected" id="sug-type-sugerencia" onclick="selectSugType('sugerencia')"
+        style="background:var(--card);border:2px solid var(--gold);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all 0.2s;">
+        <div style="font-size:22px;margin-bottom:4px;">💡</div>
+        <div style="font-size:12px;font-weight:600;color:var(--gold)">Sugerencia</div>
+      </div>
+      <div class="sug-type-btn" id="sug-type-reclamo" onclick="selectSugType('reclamo')"
+        style="background:var(--card);border:2px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all 0.2s;">
+        <div style="font-size:22px;margin-bottom:4px;">⚠️</div>
+        <div style="font-size:12px;font-weight:600;color:var(--muted)">Reclamo</div>
+      </div>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label>Asunto</label>
+      <input type="text" id="sug-asunto" placeholder="Ej: Falta papel en baños, Problema con sistema..." style="font-size:16px;">
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
+      <label>Descripción</label>
+      <textarea id="sug-descripcion" placeholder="Describe con detalle tu sugerencia o reclamo..." style="height:120px;resize:none;background:var(--card);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:10px 12px;outline:none;width:100%;"></textarea>
+    </div>
+
+    <div class="field" style="margin-bottom:16px;">
+      <label>¿Quieres que te respondan? (opcional)</label>
+      <input type="text" id="sug-contacto" placeholder="Tu nombre o cómo contactarte..." style="font-size:16px;">
+    </div>
+
+    <!-- Anónimo toggle -->
+    <div style="display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;cursor:pointer;" onclick="toggleAnonimo()">
+      <div id="anonimo-check" style="width:20px;height:20px;border-radius:5px;border:2px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s;"></div>
+      <div>
+        <div style="font-size:13px;font-weight:600;">Enviar de forma anónima</div>
+        <div style="font-size:11px;color:var(--muted);">No se incluirá tu nombre en el correo</div>
+      </div>
+    </div>
+
+    <div class="warn-box" id="sug-warnbox"><span>!</span><span id="sug-warn-txt"></span></div>
+
+    <button class="btn-send" id="btn-sug-send" onclick="enviarSugerencia()" style="background:var(--gold);">
+      📨 Enviar
+    </button>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this) cerrarModal()">
+  <div class="modal">
+    <div class="modal-icon" id="modal-icon">📋</div>
+    <div class="modal-title" id="modal-title">Confirmar</div>
+    <div style="background:#2C1F0F;border:1px solid #C8962A;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#C8962A;margin-bottom:3px;">⚠️ Atención</div>
+      <div style="font-size:12px;color:#b0946a;line-height:1.5;">Solo se puede registrar <strong id="modal-turno-warn" style="color:#C8962A;">un cierre</strong> por área al día.<br>¿Estás seguro que deseas continuar?</div>
+    </div>
+    <div class="modal-info">
+      <div class="modal-info-row"><span>Área</span><span id="modal-area">—</span></div>
+      <div class="modal-info-row"><span>Responsable</span><span id="modal-nombre">—</span></div>
+      <div class="modal-info-row"><span>Hora</span><span id="modal-hora">—</span></div>
+      <div class="modal-info-row"><span>Completados</span><span id="modal-items">—</span></div>
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn-yes" onclick="confirmarEnvio()" style="background:var(--gold)">
+        ✓ Confirmar
+      </button>
+      <button class="modal-btn-no" onclick="cerrarModal()">No, quisiera modificar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ INVENTARIO ═══ -->
+<div class="view" id="view-inventario">
+  <div class="form-header">
+    <button class="back-btn" onclick="goHome()">←</button>
+    <div class="fh-info">
+      <div class="fh-title">Inventario de Activos</div>
+      <div class="fh-sub" id="inv-sub">Cargando...</div>
+    </div>
+    <div class="fh-dot" style="background:#5B8FA8"></div>
+  </div>
+  <div class="container">
+    <div class="info-row">
+      <div class="field"><label>Responsable</label><input type="text" id="inv-nombre" placeholder="Tu nombre"></div>
+      <div class="field"><label>Fecha</label><input type="text" id="inv-fecha" readonly style="color:var(--muted)"></div>
+    </div>
+    <div id="inv-items-wrap"></div>
+    <div class="field" style="margin-bottom:12px">
+      <label>Observaciones (opcional)</label>
+      <textarea id="inv-notas" placeholder="Ej: Faltan 2 tenedores, se rompió una taza..."></textarea>
+    </div>
+    <div class="modal-overlay" id="inv-modal-overlay" onclick="if(event.target===this) document.getElementById('inv-modal-overlay').classList.remove('show')" style="display:none;">
+      <div class="modal">
+        <div class="modal-icon">📋</div>
+        <div class="modal-title">Confirmar inventario</div>
+        <div style="background:#0F1F2C;border:1px solid #5B8FA8;border-radius:10px;padding:10px 14px;margin-bottom:12px;text-align:center;">
+          <div style="font-size:13px;font-weight:700;color:#5B8FA8;margin-bottom:3px;">⚠️ Atención</div>
+          <div style="font-size:12px;color:#7A9AAA;line-height:1.5;">Verifica que las cantidades sean correctas.<br>¿Estás seguro que deseas guardar este inventario?</div>
+        </div>
+        <div class="modal-btns">
+          <button class="modal-btn-yes" onclick="confirmarEnvioInventario()" style="background:#5B8FA8">✓ Sí, guardar</button>
+          <button class="modal-btn-no" onclick="document.getElementById('inv-modal-overlay').classList.remove('show');document.getElementById('inv-modal-overlay').style.display='none';">No, revisar</button>
+        </div>
+      </div>
+    </div>
+    <button class="btn-send" onclick="abrirModalInventario()" style="background:#5B8FA8">
+      ✓ Guardar inventario
+    </button>
+  </div>
+</div>
+
+<!-- ═══ THANK YOU ═══ -->
+<div class="view" id="view-thanks">
+  <div class="ty-wrap">
+    <img src="https://i.imgur.com/0LZaFfZ.png" style="height:64px;width:auto;display:block;margin:0 auto 16px;opacity:0.95;animation:fadeUp 0.6s 0.1s forwards;opacity:0;" alt="Inquieto"><div class="ty-stars">✦ ✦ ✦</div>
+    <div class="ty-icon">🫶</div>
+    <div class="ty-title">Gracias, <span id="ty-nombre">—</span>.</div>
+    <div class="ty-msg">
+      Cada noche que cierras con cuidado, cada detalle que cuidas,
+      cada espacio que dejas listo — eso es lo que hace de Inquieto
+      algo especial.
+    </div>
+    <div class="ty-msg">
+      No solo eres parte del equipo.<br>Eres parte de la familia.
+    </div>
+    <div class="ty-divider"></div>
+    <div class="ty-sub">Buenas noches y descansa bien</div>
+    <button class="btn-send ty-wa-btn" id="ty-wa-btn" onclick="enviarWhatsapp()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Reportar actividad por WhatsApp
+    </button>
+    <button class="ty-btn" onclick="goHome()" style="margin-top:10px">← Volver al inicio</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SUPABASE ──────────────────────────────────────────────────────────────
+const SUPABASE_URL = 'https://lfwfrxsnkrnnkwjbtggm.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxmd2ZyeHNua3Jubmt3amJ0Z2dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3Njk1NDUsImV4cCI6MjA4ODM0NTU0NX0.7m7JbPED_X2Q5U5WQPK1G4VHPRzkdLKjm1ea-XQbH00';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: "implicit", detectSessionInUrl: true, persistSession: true, autoRefreshToken: true } });
+
+// ── SESSION KEEPALIVE ────────────────────────────────────────────────────
+// Refresca la sesión proactivamente cada 10 minutos para evitar expiración
+let _sessionRefreshInterval = null;
+function startSessionKeepAlive() {
+  if (_sessionRefreshInterval) clearInterval(_sessionRefreshInterval);
+  _sessionRefreshInterval = setInterval(async () => {
+    try {
+      const { data, error } = await sb.auth.refreshSession();
+      if (error) console.warn('Session refresh warning:', error.message);
+      else console.log('Session refreshed OK');
+    } catch (e) { console.warn('Session refresh failed:', e); }
+  }, 10 * 60 * 1000); // cada 10 minutos
+}
+function stopSessionKeepAlive() {
+  if (_sessionRefreshInterval) { clearInterval(_sessionRefreshInterval); _sessionRefreshInterval = null; }
+}
+
+// Refrescar sesión cuando la pestaña vuelve a estar activa (ej: usuario cambia de app y vuelve)
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && currentUser) {
+    try {
+      const { data, error } = await sb.auth.refreshSession();
+      if (error) console.warn('Visibility refresh warning:', error.message);
+    } catch (e) { console.warn('Visibility refresh failed:', e); }
+  }
+});
+
+// ── FORM STATE BACKUP ────────────────────────────────────────────────────
+// Guarda el estado del formulario para recuperarlo si hay un problema de sesión
+function saveFormState() {
+  try {
+    const activeView = document.querySelector('.view.active')?.id;
+    if (activeView !== 'view-form') return;
+    const items = document.querySelectorAll('#checklist-wrap .item');
+    const checkedItems = [...items].map((item, i) => item.classList.contains('checked'));
+    const state = {
+      area: currentArea,
+      turno: currentTurno,
+      nombre: document.getElementById('nombre')?.value || '',
+      hora: document.getElementById('hora')?.value || '',
+      notas: document.getElementById('notas')?.value || '',
+      monto: document.getElementById('monto')?.value || '',
+      checkedItems,
+      savedAt: Date.now()
+    };
+    localStorage.setItem('_formBackup', JSON.stringify(state));
+  } catch(e) {}
+}
+
+function restoreFormState() {
+  try {
+    const raw = localStorage.getItem('_formBackup');
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    // Solo restaurar si tiene menos de 2 horas
+    if (Date.now() - state.savedAt > 2 * 60 * 60 * 1000) {
+      localStorage.removeItem('_formBackup');
+      return false;
+    }
+    return state;
+  } catch(e) { return false; }
+}
+
+function clearFormState() {
+  localStorage.removeItem('_formBackup');
+}
+
+// Auto-guardar estado del formulario cada 30 segundos
+setInterval(saveFormState, 30000);
+
+// ── AREAS ─────────────────────────────────────────────────────────────────
+const AREAS = {
+  'barra-diurna': { name:'Barra Diurna', color:'#C8962A', items:['Guardar barra de postres y pasteleria','Limpiar maquina de cafe y areas afines','Dejar despejado el lavaplatos con todo limpio','Limpieza de mesas','Cambio de manteles para el nuevo turno / recogida total','Mesas cerradas en el sistema (NO dejar cuentas abiertas)','Piso limpio entregado al nuevo turno (coordinado con limpieza)'] },
+  'barra-nocturna': { name:'Barra Nocturna', color:'#9B8ED8', items:['Colocar el estante de licores en su lugar','Guardar botellas','Acomodar gavetas para el turno de la manana','Dejar los trapos listos para el dia siguiente','Limpiar barra','Limpiar piso de barra','Asegurarse de que la cocina auxiliar este limpia'] },
+  'cocina': { name:'Cocina', color:'#5B8FA8', items:['Piso de cocina barrido y trapeado','Repisas y muebles limpios y ordenados','Neveras limpias por dentro y por fuera','Piso debajo de neveras limpio','Almacen ordenado y cerrado','Cocina auxiliar limpia y desinfectada'] },
+  'sala': { name:'Sala', color:'#4CAF7D', items:['Limpiar mesas para el turno de la manana','Cambio de manteles o dejarlos listos para el dia siguiente','Asegurarse que limpieza dejo el piso limpio','Contar utileria y reportar si hubo perdida o todo esta en orden'] },
+  'caja': { name:'Caja', color:'#E8B84B', items:['Asegurarse de cerrar todas las mesas','Hacer los cierres de puntos (Ubii y BNC)','Hacer el reporte Z','Asegurarse de que los tickets de estacionamiento esten cobrados','Reportar el ingreso de efectivo (ver campo abajo)'] }
+};
+
+let currentArea = null;
+let allLogs = [];
+let currentFilter = 'all';
+
+function updateFechaDisplay() {
+  const now = new Date();
+  document.getElementById('fecha-display').textContent =
+    now.toLocaleDateString('es-VE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+updateFechaDisplay();
+setInterval(updateFechaDisplay, 60000);
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  window.scrollTo(0,0);
+  const splash = document.getElementById('splash');
+  if (splash) splash.style.display = 'none';
+}
+function goHome() {
+  if (currentUser) onUserLoggedIn(currentUser);
+  else showView('auth');
+}
+
+// ── FORM ──────────────────────────────────────────────────────────────────
+let currentTurno = 'cierre'; // 'apertura' o 'cierre'
+
+async function openArea(key) {
+  currentArea = key;
+  const a = AREAS[key];
+  // Mostrar selector de turno
+  document.getElementById('turno-area-title').textContent = a.name;
+  document.getElementById('turno-dot').style.background = a.color;
+  // Highlight color on hover
+  const btnAp = document.getElementById('turno-btn-apertura');
+  const btnCi = document.getElementById('turno-btn-cierre');
+  btnAp.style.borderColor = 'var(--border)';
+  btnCi.style.borderColor = 'var(--border)';
+  showView('turno');
+}
+
+async function confirmarTurno(tipo) {
+  currentTurno = tipo;
+  const a = AREAS[currentArea];
+  const color = a.color;
+  // Highlight selected
+  document.getElementById('turno-btn-apertura').style.borderColor = tipo === 'apertura' ? color : 'var(--border)';
+  document.getElementById('turno-btn-cierre').style.borderColor = tipo === 'cierre' ? color : 'var(--border)';
+  await cargarForm(currentArea, tipo);
+}
+
+async function cargarForm(key, tipo) {
+  const a = AREAS[key];
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+
+  // Load items from DB by area + tipo
+  const { data: ciData } = await sb.from('checklist_items').select('items').eq('area', key).eq('tipo', tipo).maybeSingle();
+  const items = ciData?.items || [];
+
+  const tipoLabel = tipo === 'apertura' ? 'apertura' : 'cierre';
+  document.getElementById('fh-title').textContent = a.name;
+  document.getElementById('fh-sub').textContent = `${items.length} ítems de ${tipoLabel}`;
+  document.getElementById('fh-dot').style.background = a.color;
+  document.getElementById('hora-label').textContent = tipo === 'apertura' ? 'Hora de apertura' : 'Hora de cierre';
+  document.getElementById('nombre').value = '';
+  if (currentUser) {
+    const name = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+    document.getElementById('nombre').value = name;
+  }
+  document.getElementById('hora').value = hh + ':' + mm;
+  document.getElementById('notas').value = '';
+  document.getElementById('warnbox').className = 'warn-box';
+
+  // Build checklist
+  const wrap = document.getElementById('checklist-wrap');
+  const sec = document.createElement('div');
+  sec.className = 'section';
+  sec.innerHTML = `<div class="section-hdr"><div class="sec-dot" style="background:${a.color}"></div><div class="sec-title" style="color:${a.color}">${a.name}</div><div class="sec-count" id="sec-count">0 / ${items.length}</div></div>`;
+  if (!items.length) {
+    sec.innerHTML += `<div style="padding:14px;font-size:13px;color:var(--muted);">No hay ítems configurados para este turno aún.</div>`;
+  }
+  items.forEach((lbl, i) => {
+    const d = document.createElement('div');
+    d.className = 'item'; d.dataset.i = i;
+    d.onclick = function() { this.classList.toggle('checked'); updateProg(); };
+    d.innerHTML = `<div class="cb"><svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L3.8 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div><span class="item-label">${lbl}</span>`;
+    sec.appendChild(d);
+  });
+  wrap.innerHTML = ''; wrap.appendChild(sec);
+  updateProg();
+
+  // Custom inputs (solo para cierre)
+  const montoWrap = document.getElementById('monto-wrap');
+  montoWrap.style.display = 'none';
+  document.getElementById('monto').value = '';
+  document.querySelectorAll('.custom-input-wrap').forEach(el => el.remove());
+
+  const { data: areaInputs } = await sb.from('area_inputs').select('*').eq('area', key).eq('turno', tipo).order('orden');
+  if (areaInputs?.length) {
+    areaInputs.forEach(inp => {
+      const div = document.createElement('div');
+      div.className = 'monto-wrap custom-input-wrap';
+      div.dataset.inputId = inp.id;
+      const esDinero = inp.tipo === 'dinero';
+      const esNumero = inp.tipo === 'number';
+      const esTexto  = inp.tipo === 'text';
+      const inputType = (esDinero || esNumero) ? 'number' : 'text';
+      const prefix = esDinero ? '<span class="curr">$</span>' : esNumero ? '<span class="curr">#</span>' : '';
+      const placeholder = esTexto ? '' : esDinero ? '0.00' : '0';
+      const stepAttr = esDinero ? 'step="0.01"' : esNumero ? 'step="1"' : '';
+      const extraAttr = (esDinero || esNumero) ? `min="0" ${stepAttr}` : '';
+      div.innerHTML = `
+        <span class="monto-lbl">${inp.label}</span>
+        <div class="monto-row">
+          ${prefix}
+          <input type="${inputType}" id="custom-input-${inp.id}" placeholder="${placeholder}"
+            ${extraAttr}
+            style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:${esTexto ? '16px' : '18px'};font-weight:${esTexto ? '400' : '600'};padding:9px 12px;outline:none;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border)'">
+        </div>`;
+      const notasField = document.querySelector('#view-form .field:has(#notas)') || document.getElementById('notas').closest('.field');
+      notasField.parentNode.insertBefore(div, notasField);
+    });
+  }
+
+  showView('form');
+}
+
+function updateProg() {
+  const items = document.querySelectorAll('#checklist-wrap .item');
+  const done = document.querySelectorAll('#checklist-wrap .item.checked').length;
+  const total = items.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('pct').textContent = pct + '%';
+  const f = document.getElementById('fill');
+  f.style.width = pct + '%';
+  f.className = 'prog-fill' + (pct===100?' done':'');
+  const c = document.getElementById('sec-count');
+  if (c) c.textContent = done + ' / ' + total;
+}
+
+// ── ENVIAR ────────────────────────────────────────────────────────────────
+function enviar() {
+  const nombre = document.getElementById('nombre').value.trim();
+  const hora   = document.getElementById('hora').value;
+  const wb = document.getElementById('warnbox');
+  if (!nombre) {
+    wb.className = 'warn-box show';
+    document.getElementById('warn-txt').textContent = 'Por favor ingresa tu nombre antes de enviar.';
+    return;
+  }
+  wb.className = 'warn-box';
+
+  const items = document.querySelectorAll('#checklist-wrap .item');
+  const completados = [...items].filter(i => i.classList.contains('checked')).length;
+  const turnoLabel = currentTurno === 'apertura' ? 'apertura' : 'cierre';
+  document.getElementById('modal-icon').textContent = currentTurno === 'apertura' ? '🌅' : '🌙';
+  document.getElementById('modal-title').textContent = 'Confirmar ' + turnoLabel;
+  document.getElementById('modal-turno-warn').textContent = 'una ' + turnoLabel;
+  document.getElementById('modal-area').textContent = AREAS[currentArea].name;
+  document.getElementById('modal-nombre').textContent = nombre;
+  document.getElementById('modal-hora').textContent = hora;
+  document.getElementById('modal-items').textContent = completados + ' de ' + items.length;
+  document.getElementById('modal-overlay').classList.add('show');
+}
+
+function cerrarModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+
+async function confirmarEnvio() {
+  cerrarModal();
+  const nombre = document.getElementById('nombre').value.trim();
+  const hora   = document.getElementById('hora').value;
+  const notas  = document.getElementById('notas').value.trim();
+  const monto  = document.getElementById('monto').value.trim();
+  // Collect custom inputs
+  const customInputs = [];
+  document.querySelectorAll('.custom-input-wrap').forEach(div => {
+    const id = div.dataset.inputId;
+    const el = document.getElementById('custom-input-' + id);
+    const label = div.querySelector('.monto-lbl')?.textContent || '';
+    if (el) customInputs.push({ id, label, value: el.value.trim(), tipo: el.type });
+  });
+  const a = AREAS[currentArea];
+  const items = document.querySelectorAll('#checklist-wrap .item');
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const LINE = '--------------------';
+
+  let checklist = '';
+  let itemData = [];
+  items.forEach(item => {
+    const lbl = item.querySelector('.item-label').textContent;
+    const done = item.classList.contains('checked');
+    checklist += '\n' + (done ? '[OK] ' : '[--] ') + lbl;
+    itemData.push({ label: lbl, done });
+  });
+
+  const pendientes = [...items].filter(i => !i.classList.contains('checked')).length;
+  const tipoLabel = currentTurno === 'apertura' ? 'APERTURA' : 'CIERRE';
+  const estado = pendientes === 0 ? `*${tipoLabel} COMPLETO*` : `*${tipoLabel} INCOMPLETO* (` + pendientes + ' pendiente' + (pendientes>1?'s':'') + ')';
+
+  let msg = `*REPORTE DE ${tipoLabel}*\n` + LINE + '\n';
+  msg += 'Area: *' + a.name.toUpperCase() + '*\n';
+  msg += 'Responsable: *' + nombre + '*\n';
+  msg += 'Fecha: *' + fecha + '*\nHora: *' + hora + '*\n';
+  msg += LINE + '\n*CHECKLIST:*' + checklist + '\n' + LINE + '\n' + estado + '\n';
+  if (currentArea === 'caja' && monto) msg += 'Efectivo ingresado: *$' + monto + '*\n';
+  if (notas) msg += '\nObservaciones:\n' + notas + '\n';
+  msg += LINE;
+
+  window._waUrl = 'https://wa.me/?text=' + encodeURIComponent(msg);
+
+  // Guardar en Supabase con reintento
+  const btnSend = document.querySelector('.btn-send');
+  const originalBtnText = btnSend.innerHTML;
+  btnSend.innerHTML = '⏳ Guardando...';
+  btnSend.disabled = true;
+
+  let error = null;
+  for (let intento = 1; intento <= 3; intento++) {
+    const res = await sb.from('cierres').insert({
+      area: currentArea,
+      area_nombre: a.name,
+      area_color: a.color,
+      responsable: nombre,
+      hora, fecha,
+      turno: currentTurno,
+      items: itemData,
+      pendientes,
+      monto: currentArea === 'caja' && monto ? monto : null,
+      notas: notas || null
+    });
+    error = res.error;
+    if (!error) break;
+    if (intento < 3) await new Promise(r => setTimeout(r, 1500));
+  }
+
+  btnSend.innerHTML = originalBtnText;
+  btnSend.disabled = false;
+
+  if (error) {
+    console.error(error);
+    const msg = error.message || error.details || 'Sin conexión. Verifica tu internet e intenta de nuevo.';
+    const wb = document.getElementById('warnbox');
+    wb.className = 'warn-box show';
+    document.getElementById('warn-txt').textContent = '⚠️ ' + msg;
+    return;
+  }
+
+  // Mostrar pantalla de agradecimiento
+  document.getElementById('ty-nombre').textContent = nombre;
+  const animated = document.querySelectorAll('#view-thanks .ty-stars, #view-thanks .ty-icon, #view-thanks .ty-title, #view-thanks .ty-msg, #view-thanks .ty-divider, #view-thanks .ty-sub, #view-thanks .ty-wa-btn, #view-thanks .ty-btn');
+  animated.forEach(el => { el.style.animation = 'none'; el.offsetHeight; el.style.animation = ''; });
+  showView('thanks');
+  clearFormState(); // Limpiar backup del formulario tras envío exitoso
+
+  // Enviar correo en background (no bloquea la pantalla de agradecimiento)
+  enviarCorreoReporte({ nombre, hora, fecha, a, itemData, pendientes, monto, notas, customInputs, turno: currentTurno });
+}
+
+function enviarWhatsapp() {
+  if (window._waUrl) window.open(window._waUrl, '_blank');
+}
+
+async function enviarCorreoReporte({ nombre, hora, fecha, a, itemData, pendientes, monto, notas, customInputs = [], turno = 'cierre' }) {
+  try {
+    const { data: cfg } = await sb.from('config').select('email_reportes').eq('id', 1).single();
+    if (!cfg?.email_reportes) return;
+
+    const tipoLabel = turno === 'apertura' ? 'Apertura' : 'Cierre';
+    const tipoLabelUp = tipoLabel.toUpperCase();
+    const estado = pendientes === 0 ? `✅ ${tipoLabelUp} COMPLETO` : `⚠️ INCOMPLETO — ${pendientes} pendiente${pendientes>1?'s':''}`;
+    const colorEstado = pendientes === 0 ? '#4CAF7D' : '#E05C5C';
+
+    const itemsHtml = itemData.map(i => `
+      <tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #2C2A26;">
+          <span style="color:${i.done?'#4CAF7D':'#E05C5C'};font-weight:700;margin-right:8px;">${i.done?'✓':'✗'}</span>
+          <span style="color:${i.done?'#aaa':'#F0EDE6'};${i.done?'text-decoration:line-through;':''}">${i.label}</span>
+        </td>
+      </tr>`).join('');
+
+    const html = `
+    <div style="background:#0F0E0C;padding:32px 0;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <div style="max-width:520px;margin:0 auto;background:#1A1917;border-radius:16px;overflow:hidden;border:1px solid #2C2A26;">
+        <div style="background:#1A1917;padding:28px 32px;border-bottom:1px solid #2C2A26;text-align:center;">
+          <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C8962A;font-weight:600;margin-bottom:6px;">App Inquieto</div>
+          <div style="font-size:22px;font-weight:700;color:#F0EDE6;">Reporte de ${tipoLabel}</div>
+          <div style="font-size:13px;color:#7A7568;margin-top:4px;">${fecha} — ${hora}</div>
+        </div>
+        <div style="padding:24px 32px;">
+          <table style="width:100%;margin-bottom:20px;">
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;width:120px;">Área</td><td style="font-size:14px;color:${a.color};font-weight:600;">${a.name}</td></tr>
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Turno</td><td style="font-size:14px;color:#F0EDE6;font-weight:600;">${tipoLabel}</td></tr>
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Responsable</td><td style="font-size:14px;color:#F0EDE6;font-weight:600;">${nombre}</td></tr>
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Estado</td><td style="font-size:14px;color:${colorEstado};font-weight:700;">${estado}</td></tr>
+            ${monto ? `<tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Efectivo</td><td style="font-size:14px;color:#C8962A;font-weight:600;">$${monto}</td></tr>` : ''}
+            ${customInputs.map(ci => ci.value ? `<tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">${ci.label}</td><td style="font-size:14px;color:#C8962A;font-weight:600;">${ci.tipo==='number'?'$':''}${ci.value}</td></tr>` : '').join('')}
+          </table>
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7A7568;font-weight:600;margin-bottom:10px;">Checklist</div>
+          <table style="width:100%;border-radius:10px;overflow:hidden;border:1px solid #2C2A26;">${itemsHtml}</table>
+          ${notas ? `<div style="margin-top:16px;background:#0F0E0C;border-radius:8px;padding:12px 16px;font-size:13px;color:#7A7568;border-left:3px solid #C8962A;"><strong style="color:#F0EDE6;">Observaciones:</strong><br>${notas}</div>` : ''}
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid #2C2A26;text-align:center;font-size:11px;color:#7A7568;">Enviado automáticamente por App Inquieto</div>
+      </div>
+    </div>`;
+
+    await sb.functions.invoke('enviar-reporte', {
+      body: {
+        to: cfg.email_reportes,
+        subject: `[Inquieto] ${tipoLabel} ${a.name} — ${nombre} — ${fecha}`,
+        html
+      }
+    });
+  } catch(e) {
+    console.warn('Error enviando correo:', e);
+  }
+}
+
+
+// ── INVENTARIO ────────────────────────────────────────────────────────────
+
+async function actualizarMetaInventario() {
+  const meta = document.getElementById('inv-btn-meta');
+  if (!meta) return;
+
+  // Get last registro
+  const { data: ultimo } = await sb.from('inventario_registros')
+    .select('fecha, created_at').order('created_at', { ascending: false }).limit(1).maybeSingle();
+
+  // Calculate next monday
+  const hoy = new Date();
+  const diaSemana = hoy.getDay(); // 0=dom, 1=lun...
+  const diasHastaLunes = diaSemana === 1 ? 7 : (8 - diaSemana) % 7 || 7;
+  const proximoLunes = new Date(hoy);
+  proximoLunes.setDate(hoy.getDate() + diasHastaLunes);
+
+  const diffMs = proximoLunes - hoy;
+  const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  let proximoStr = '';
+  if (diffDias === 0) proximoStr = 'hoy es lunes!';
+  else if (diffDias === 1) proximoStr = 'próximo lunes: mañana';
+  else proximoStr = `próximo lunes: en ${diffDias} días`;
+
+  if (ultimo?.fecha) {
+    meta.textContent = `Último: ${ultimo.fecha} · ${proximoStr}`;
+  } else {
+    meta.textContent = `Sin registros · ${proximoStr}`;
+  }
+}
+
+async function abrirInventario() {
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  document.getElementById('inv-fecha').value = fecha;
+  if (currentUser) {
+    const name = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+    document.getElementById('inv-nombre').value = name;
+  }
+  document.getElementById('inv-notas').value = '';
+
+  // Load items
+  const { data: items } = await sb.from('inventario_items').select('*').eq('activo', true).order('orden');
+  const wrap = document.getElementById('inv-items-wrap');
+
+  // Load last registro for comparison
+  const { data: ultimo } = await sb.from('inventario_registros').select('items').order('created_at', { ascending: false }).limit(1).maybeSingle();
+  const ultimoMap = {};
+  if (ultimo?.items) ultimo.items.forEach(i => { ultimoMap[i.id] = i.cantidad; });
+
+  document.getElementById('inv-sub').textContent = `${items?.length || 0} ítems · semana del ${fecha}`;
+
+  if (!items?.length) {
+    wrap.innerHTML = '<div style="padding:16px;color:var(--muted);font-size:13px;text-align:center;">No hay ítems configurados. Pídele al admin que los agregue.</div>';
+    return;
+  }
+
+  wrap.innerHTML = items.map(item => {
+    const anterior = ultimoMap[item.id];
+    const anteriorHtml = anterior !== undefined
+      ? `<span style="font-size:11px;color:var(--muted);margin-top:2px;display:block;">Último: ${anterior}</span>`
+      : '';
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">${item.nombre}</div>
+        ${anteriorHtml}
+      </div>
+      <input type="number" id="inv-item-${item.id}" min="0" step="1" placeholder="0"
+        data-item-id="${item.id}" data-item-nombre="${item.nombre}" data-anterior="${anterior ?? ''}"
+        style="width:80px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:18px;font-weight:700;padding:9px 12px;outline:none;text-align:center;"
+        onfocus="this.style.borderColor='#5B8FA8'" onblur="this.style.borderColor='var(--border)'">
+    </div>`;
+  }).join('');
+
+  showView('inventario');
+}
+
+function abrirModalInventario() {
+  const nombre = document.getElementById('inv-nombre').value.trim();
+  if (!nombre) { showToast('Por favor ingresa tu nombre'); return; }
+  const overlay = document.getElementById('inv-modal-overlay');
+  overlay.style.display = 'flex';
+  setTimeout(() => overlay.classList.add('show'), 10);
+}
+
+async function confirmarEnvioInventario() {
+  const overlay = document.getElementById('inv-modal-overlay');
+  overlay.classList.remove('show');
+  overlay.style.display = 'none';
+  await enviarInventario();
+}
+
+async function enviarInventario() {
+  const nombre = document.getElementById('inv-nombre').value.trim();
+  const notas  = document.getElementById('inv-notas').value.trim();
+  const fecha  = document.getElementById('inv-fecha').value;
+  const now    = new Date();
+  const hora   = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+  if (!nombre) { showToast('Por favor ingresa tu nombre'); return; }
+
+  // Collect items
+  const inputs = document.querySelectorAll('#inv-items-wrap input[data-item-id]');
+  const itemsData = [];
+  inputs.forEach(inp => {
+    itemsData.push({
+      id:       inp.dataset.itemId,
+      nombre:   inp.dataset.itemNombre,
+      cantidad: inp.value !== '' ? Number(inp.value) : null,
+      anterior: inp.dataset.anterior !== '' ? Number(inp.dataset.anterior) : null
+    });
+  });
+
+  const btn = document.querySelector('#view-inventario .btn-send');
+  btn.innerHTML = '⏳ Guardando...'; btn.disabled = true;
+
+  const { error } = await sb.from('inventario_registros').insert({
+    responsable: nombre,
+    user_id: currentUser?.id || null,
+    fecha, hora,
+    items: itemsData,
+    notas: notas || null
+  });
+
+  btn.innerHTML = '✓ Guardar inventario'; btn.disabled = false;
+
+  if (error) { showToast('Error al guardar inventario'); return; }
+
+  // Send report email
+  enviarCorreoInventario({ nombre, fecha, hora, itemsData, notas });
+
+  showToast('✓ Inventario guardado');
+  goHome();
+}
+
+async function enviarCorreoInventario({ nombre, fecha, hora, itemsData, notas }) {
+  try {
+    const { data: cfg } = await sb.from('config').select('email_reportes').eq('id', 1).single();
+    if (!cfg?.email_reportes) return;
+
+    const filasHtml = itemsData.map(item => {
+      const tieneAnterior = item.anterior !== null && item.anterior !== undefined;
+      const tieneActual   = item.cantidad !== null && item.cantidad !== undefined;
+      let diff = '', diffColor = '#7A7568';
+      if (tieneAnterior && tieneActual) {
+        const d = item.cantidad - item.anterior;
+        if (d > 0)      { diff = `▲ +${d}`; diffColor = '#4CAF7D'; }
+        else if (d < 0) { diff = `▼ ${d}`;  diffColor = '#E05C5C'; }
+        else            { diff = '= igual';  diffColor = '#7A7568'; }
+      } else if (!tieneAnterior) {
+        diff = 'nuevo'; diffColor = '#5B8FA8';
+      }
+      return `<tr>
+        <td style="padding:9px 12px;border-bottom:1px solid #2C2A26;font-size:13px;color:#F0EDE6;">${item.nombre}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #2C2A26;font-size:13px;color:#7A7568;text-align:center;">${item.anterior ?? '—'}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #2C2A26;font-size:14px;font-weight:700;color:#F0EDE6;text-align:center;">${item.cantidad ?? '—'}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #2C2A26;font-size:12px;font-weight:700;color:${diffColor};text-align:center;">${diff}</td>
+      </tr>`;
+    }).join('');
+
+    const html = `
+    <div style="background:#0F0E0C;padding:32px 0;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;background:#1A1917;border-radius:16px;overflow:hidden;border:1px solid #2C2A26;">
+        <div style="padding:28px 32px;border-bottom:1px solid #2C2A26;text-align:center;">
+          <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#5B8FA8;font-weight:600;margin-bottom:6px;">App Inquieto</div>
+          <div style="font-size:22px;font-weight:700;color:#F0EDE6;">Inventario de Activos</div>
+          <div style="font-size:13px;color:#7A7568;margin-top:4px;">${fecha} — ${hora}</div>
+        </div>
+        <div style="padding:24px 32px;">
+          <table style="width:100%;margin-bottom:20px;">
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;width:130px;">Responsable</td><td style="font-size:14px;color:#F0EDE6;font-weight:600;">${nombre}</td></tr>
+          </table>
+          <table style="width:100%;border-radius:10px;overflow:hidden;border:1px solid #2C2A26;">
+            <thead>
+              <tr style="background:#2C2A26;">
+                <th style="padding:9px 12px;font-size:11px;color:#7A7568;text-align:left;font-weight:600;letter-spacing:1px;">ÍTEM</th>
+                <th style="padding:9px 12px;font-size:11px;color:#7A7568;text-align:center;font-weight:600;letter-spacing:1px;">ANTERIOR</th>
+                <th style="padding:9px 12px;font-size:11px;color:#7A7568;text-align:center;font-weight:600;letter-spacing:1px;">ACTUAL</th>
+                <th style="padding:9px 12px;font-size:11px;color:#7A7568;text-align:center;font-weight:600;letter-spacing:1px;">DIFERENCIA</th>
+              </tr>
+            </thead>
+            <tbody>${filasHtml}</tbody>
+          </table>
+          ${notas ? `<div style="margin-top:16px;background:#0F0E0C;border-radius:8px;padding:12px 16px;font-size:13px;color:#7A7568;border-left:3px solid #5B8FA8;"><strong style="color:#F0EDE6;">Observaciones:</strong><br>${notas}</div>` : ''}
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid #2C2A26;text-align:center;font-size:11px;color:#7A7568;">Enviado automáticamente por App Inquieto</div>
+      </div>
+    </div>`;
+
+    // Al email de reportes
+    await sb.functions.invoke('enviar-reporte', {
+      body: {
+        to: cfg.email_reportes,
+        subject: `[Inquieto] Inventario de Activos — ${nombre} — ${fecha}`,
+        html
+      }
+    });
+
+    // Copia al usuario que lo hizo
+    if (currentUser?.email) {
+      await sb.functions.invoke('enviar-reporte', {
+        body: {
+          to: currentUser.email,
+          subject: `[Inquieto] Tu inventario fue registrado — ${fecha}`,
+          html
+        }
+      });
+    }
+  } catch(e) {
+    console.warn('Error enviando correo inventario:', e);
+  }
+}
+
+// ── INVENTARIO ADMIN ──────────────────────────────────────────────────────
+
+async function loadAdminInventario() {
+  await loadInvItems();
+  await loadInvAsignados();
+  await loadInvHistorial();
+}
+
+async function loadInvItems() {
+  const { data: items } = await sb.from('inventario_items').select('*').order('orden');
+  const wrap = document.getElementById('inv-admin-items');
+  if (!items?.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Sin ítems aún.</div>'; return; }
+  wrap.innerHTML = items.map((item, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);width:18px;">${i+1}.</span>
+      <input type="text" value="${item.nombre.replace(/"/g,'&quot;')}"
+        onchange="actualizarNombreInvItem('${item.id}', this.value)"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;outline:none;">
+      <button onclick="eliminarInvItem('${item.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 4px;">✕</button>
+    </div>`).join('');
+}
+
+async function agregarItemInventario() {
+  const input = document.getElementById('inv-nuevo-item');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  const { data: existing } = await sb.from('inventario_items').select('orden').order('orden', { ascending: false }).limit(1).maybeSingle();
+  const orden = (existing?.orden ?? -1) + 1;
+  const { error } = await sb.from('inventario_items').insert({ nombre, orden });
+  if (error) { showToast('Error al agregar'); return; }
+  input.value = '';
+  await loadInvItems();
+  showToast('✓ Ítem agregado');
+}
+
+async function actualizarNombreInvItem(id, nombre) {
+  await sb.from('inventario_items').update({ nombre }).eq('id', id);
+  showToast('✓ Guardado');
+}
+
+async function eliminarInvItem(id) {
+  if (!confirm('¿Eliminar este ítem del inventario?')) return;
+  await sb.from('inventario_items').delete().eq('id', id);
+  await loadInvItems();
+  showToast('Ítem eliminado');
+}
+
+async function loadInvAsignados() {
+  const wrap = document.getElementById('inv-asignados-wrap');
+  // Load all empleados
+  const { data: empleados } = await sb.from('perfiles').select('user_id, nombre, email');
+  const { data: asignados } = await sb.from('inventario_asignados').select('user_id');
+  const asignadosIds = new Set((asignados || []).map(a => a.user_id));
+
+  if (!empleados?.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;">No hay empleados registrados.</div>'; return; }
+
+  wrap.innerHTML = empleados.map(emp => {
+    const isAsignado = asignadosIds.has(emp.user_id);
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;font-size:13px;color:var(--text);">${emp.nombre || emp.email}</div>
+      <button onclick="toggleInvAsignado('${emp.user_id}','${emp.email}','${emp.nombre || emp.email}', this)"
+        style="padding:6px 14px;border-radius:8px;border:1.5px solid ${isAsignado ? '#5B8FA8' : 'var(--border)'};background:${isAsignado ? '#5B8FA850' : 'transparent'};color:${isAsignado ? '#5B8FA8' : 'var(--muted)'};font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;">
+        ${isAsignado ? '✓ Asignado' : '+ Asignar'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function toggleInvAsignado(userId, email, nombre, btn) {
+  const isAsignado = btn.textContent.trim().startsWith('✓');
+  if (isAsignado) {
+    await sb.from('inventario_asignados').delete().eq('user_id', userId);
+    btn.textContent = '+ Asignar';
+    btn.style.borderColor = 'var(--border)';
+    btn.style.background = 'transparent';
+    btn.style.color = 'var(--muted)';
+  } else {
+    await sb.from('inventario_asignados').insert({ user_id: userId, email, nombre });
+    btn.textContent = '✓ Asignado';
+    btn.style.borderColor = '#5B8FA8';
+    btn.style.background = '#5B8FA850';
+    btn.style.color = '#5B8FA8';
+  }
+}
+
+async function loadInvHistorial() {
+  const wrap = document.getElementById('inv-historial-wrap');
+  const { data: registros } = await sb.from('inventario_registros').select('*').order('created_at', { ascending: false }).limit(10);
+  if (!registros?.length) { wrap.innerHTML = '<div class="empleado-card" style="color:var(--muted);font-size:13px;">Sin registros aún.</div>'; return; }
+
+  wrap.innerHTML = registros.map(r => {
+    const itemsHtml = r.items.map(item => {
+      let diff = '', diffColor = '#7A7568';
+      if (item.anterior !== null && item.anterior !== undefined && item.cantidad !== null) {
+        const d = item.cantidad - item.anterior;
+        if (d > 0)      { diff = ` <span style="color:#4CAF7D;font-size:11px;">▲+${d}</span>`; }
+        else if (d < 0) { diff = ` <span style="color:#E05C5C;font-size:11px;">▼${d}</span>`; }
+        else            { diff = ` <span style="color:#7A7568;font-size:11px;">=</span>`; }
+      }
+      return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;">
+        <span style="color:var(--muted);">${item.nombre}</span>
+        <span style="color:var(--text);font-weight:600;">${item.cantidad ?? '—'}${diff}</span>
+      </div>`;
+    }).join('');
+
+    return `<div class="empleado-card" style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);">${r.responsable}</div>
+          <div style="font-size:11px;color:var(--muted);">${r.fecha} · ${r.hora}</div>
+        </div>
+      </div>
+      ${itemsHtml}
+      ${r.notas ? `<div style="margin-top:8px;font-size:12px;color:var(--muted);font-style:italic;">"${r.notas}"</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── SUGERENCIAS ────────────────────────────────────────────────────────────
+let sugType = 'sugerencia';
+let sugAnonimo = false;
+
+function selectSugType(type) {
+  sugType = type;
+  const isSug = type === 'sugerencia';
+  const btnSug = document.getElementById('sug-type-sugerencia');
+  const btnRec = document.getElementById('sug-type-reclamo');
+  btnSug.style.borderColor = isSug ? 'var(--gold)' : 'var(--border)';
+  btnSug.querySelector('div:last-child').style.color = isSug ? 'var(--gold)' : 'var(--muted)';
+  btnRec.style.borderColor = !isSug ? '#E05C5C' : 'var(--border)';
+  btnRec.querySelector('div:last-child').style.color = !isSug ? '#E05C5C' : 'var(--muted)';
+}
+
+function toggleAnonimo() {
+  sugAnonimo = !sugAnonimo;
+  const check = document.getElementById('anonimo-check');
+  check.style.background = sugAnonimo ? 'var(--gold)' : 'var(--bg)';
+  check.style.borderColor = sugAnonimo ? 'var(--gold)' : 'var(--border)';
+  check.innerHTML = sugAnonimo ? '<svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L3.8 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '';
+}
+
+async function enviarSugerencia() {
+  const asunto = document.getElementById('sug-asunto').value.trim();
+  const desc   = document.getElementById('sug-descripcion').value.trim();
+  const contacto = document.getElementById('sug-contacto').value.trim();
+  const wb = document.getElementById('sug-warnbox');
+  const btn = document.getElementById('btn-sug-send');
+
+  wb.className = 'warn-box';
+  if (!asunto) { wb.className='warn-box show'; document.getElementById('sug-warn-txt').textContent='Por favor ingresa un asunto.'; return; }
+  if (!desc)   { wb.className='warn-box show'; document.getElementById('sug-warn-txt').textContent='Por favor describe tu sugerencia o reclamo.'; return; }
+
+  btn.disabled = true; btn.innerHTML = '⏳ Enviando...';
+
+  try {
+    const { data: cfg } = await sb.from('config').select('email_reportes').eq('id', 1).single();
+    if (!cfg?.email_reportes) throw new Error('No hay correo configurado');
+
+    const nombre = sugAnonimo ? 'Anónimo' : (currentUser?.user_metadata?.full_name || currentUser?.email || 'Empleado');
+    const tipoLabel = sugType === 'sugerencia' ? '💡 Sugerencia' : '⚠️ Reclamo';
+    const colorTipo = sugType === 'sugerencia' ? '#C8962A' : '#E05C5C';
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const hora  = now.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+
+    const html = `
+    <div style="background:#0F0E0C;padding:32px 0;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <div style="max-width:520px;margin:0 auto;background:#1A1917;border-radius:16px;overflow:hidden;border:1px solid #2C2A26;">
+        <div style="padding:28px 32px;border-bottom:1px solid #2C2A26;text-align:center;">
+          <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C8962A;font-weight:600;margin-bottom:6px;">App Inquieto</div>
+          <div style="font-size:22px;font-weight:700;color:#F0EDE6;">${tipoLabel}</div>
+          <div style="font-size:13px;color:#7A7568;margin-top:4px;">${fecha} — ${hora}</div>
+        </div>
+        <div style="padding:24px 32px;">
+          <table style="width:100%;margin-bottom:20px;">
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;width:120px;">Tipo</td><td style="font-size:14px;color:${colorTipo};font-weight:700;">${tipoLabel}</td></tr>
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">De</td><td style="font-size:14px;color:#F0EDE6;font-weight:600;">${nombre}</td></tr>
+            <tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Asunto</td><td style="font-size:14px;color:#F0EDE6;font-weight:600;">${asunto}</td></tr>
+            ${contacto ? `<tr><td style="padding:6px 0;font-size:12px;color:#7A7568;">Contacto</td><td style="font-size:14px;color:#F0EDE6;">${contacto}</td></tr>` : ''}
+          </table>
+          <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#7A7568;font-weight:600;margin-bottom:10px;">Descripción</div>
+          <div style="background:#0F0E0C;border-radius:10px;padding:16px;font-size:14px;color:#F0EDE6;line-height:1.7;border-left:3px solid ${colorTipo};">${desc.replace(/\n/g,'<br>')}</div>
+        </div>
+        <div style="padding:16px 32px;border-top:1px solid #2C2A26;text-align:center;font-size:11px;color:#7A7568;">Enviado automáticamente por App Inquieto</div>
+      </div>
+    </div>`;
+
+    await sb.functions.invoke('enviar-reporte', {
+      body: {
+        to: cfg.email_reportes,
+        subject: `[Inquieto] ${tipoLabel}: ${asunto}`,
+        html
+      }
+    });
+
+    // Reset form y mostrar éxito
+    document.getElementById('sug-asunto').value = '';
+    document.getElementById('sug-descripcion').value = '';
+    document.getElementById('sug-contacto').value = '';
+    if (sugAnonimo) toggleAnonimo();
+    selectSugType('sugerencia');
+
+    btn.disabled = false; btn.innerHTML = '📨 Enviar';
+    showToast('✓ Enviado correctamente');
+    goHome();
+
+  } catch(e) {
+    btn.disabled = false; btn.innerHTML = '📨 Enviar';
+    wb.className = 'warn-box show';
+    document.getElementById('sug-warn-txt').textContent = 'Error al enviar. Intenta de nuevo.';
+  }
+}
+
+// ── CONFIG ─────────────────────────────────────────────────────────────────
+async function loadConfig() {
+  const { data } = await sb.from('config').select('email_reportes, inv_dia_semana, inv_hora, inv_hora_alerta').eq('id', 1).single();
+  if (data?.email_reportes) {
+    const el = document.getElementById('config-email');
+    if (el) el.value = data.email_reportes;
+  }
+  // Rebuild inventario config section with correct values
+  const dia = data?.inv_dia_semana ?? 1;
+  const hora = data?.inv_hora ? String(data.inv_hora).slice(0,5) : '08:00';
+  const horaAlerta = data?.inv_hora_alerta ? String(data.inv_hora_alerta).slice(0,5) : '10:00';
+  const diasOpts = [
+    [0,'Domingo'],[1,'Lunes'],[2,'Martes'],[3,'Miércoles'],[4,'Jueves'],[5,'Viernes'],[6,'Sábado']
+  ];
+  const diaSelect = document.getElementById('config-inv-dia');
+  if (diaSelect) {
+    diaSelect.innerHTML = diasOpts.map(([v,n]) => 
+      `<option value="${v}">${n}</option>`
+    ).join('');
+    diaSelect.value = String(dia);
+  }
+  const horaEl = document.getElementById('config-inv-hora');
+  if (horaEl) { horaEl.value = hora; horaEl.setAttribute('value', hora); horaEl.setAttribute('placeholder', hora); }
+  const horaAlertaEl = document.getElementById('config-inv-hora-alerta');
+  if (horaAlertaEl) { horaAlertaEl.value = horaAlerta; horaAlertaEl.setAttribute('value', horaAlerta); horaAlertaEl.setAttribute('placeholder', horaAlerta); }
+  console.log('loadConfig:', {dia, hora, horaAlerta, raw_hora: data?.inv_hora, raw_alerta: data?.inv_hora_alerta});
+}
+
+async function guardarConfigEmail() {
+  const email = document.getElementById('config-email').value.trim();
+  const msg = document.getElementById('config-msg');
+  if (!email) { msg.style.color='var(--red)'; msg.textContent='Ingresa un correo válido.'; return; }
+
+  const { error } = await sb.from('config').upsert({ id: 1, email_reportes: email, updated_at: new Date().toISOString() });
+  if (error) { msg.style.color='var(--red)'; msg.textContent='Error al guardar.'; return; }
+  msg.style.color='var(--green)'; msg.textContent='✓ Correo guardado.';
+  setTimeout(() => msg.textContent='', 3000);
+}
+
+async function guardarConfigInventario() {
+  const dia  = parseInt(document.getElementById('config-inv-dia').value);
+  const hora = document.getElementById('config-inv-hora').value;
+  const horaAlerta = document.getElementById('config-inv-hora-alerta').value;
+  const msg  = document.getElementById('config-inv-msg');
+
+  if (!hora || !horaAlerta) { msg.style.color='var(--red)'; msg.textContent='Completa todos los campos.'; return; }
+  if (hora >= horaAlerta) { msg.style.color='var(--red)'; msg.textContent='La hora de alerta debe ser después de la hora límite.'; return; }
+
+  const { error } = await sb.from('config').upsert({
+    id: 1,
+    inv_dia_semana: dia,
+    inv_hora: hora,
+    inv_hora_alerta: horaAlerta,
+    updated_at: new Date().toISOString()
+  });
+  if (error) { msg.style.color='var(--red)'; msg.textContent='Error al guardar.'; return; }
+  msg.style.color='var(--green)'; msg.textContent='✓ Configuración guardada.';
+  setTimeout(() => msg.textContent='', 3000);
+}
+
+
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+const ADMIN_EMAIL = 'luis@debarmedia.com';
+const AREA_META = {
+  'barra-diurna':   { name:'Barra Diurna',   icon:'☀️',  color:'#C8962A', count:'7 ítems' },
+  'barra-nocturna': { name:'Barra Nocturna', icon:'🌙',  color:'#9B8ED8', count:'7 ítems' },
+  'cocina':         { name:'Cocina',         icon:'🍳',  color:'#5B8FA8', count:'6 ítems' },
+  'sala':           { name:'Sala',           icon:'🪑',  color:'#4CAF7D', count:'4 ítems' },
+  'caja':           { name:'Caja',           icon:'🧾',  color:'#E8B84B', count:'5 ítems + efectivo' }
+};
+
+let currentUser = null;
+let selectedPerfilAreas = [];
+
+let authMode = 'login';
+
+function switchTab(mode) {
+  authMode = mode;
+  const isReg = mode === 'register';
+  document.getElementById('tab-login').classList.toggle('active', !isReg);
+  document.getElementById('tab-register').classList.toggle('active', isReg);
+  document.getElementById('auth-register-fields').style.display = isReg ? 'block' : 'none';
+  document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block';
+  document.getElementById('btn-email-auth').textContent = isReg ? 'Crear cuenta' : 'Entrar';
+  document.getElementById('auth-err').textContent = '';
+  document.getElementById('auth-err').style.color = 'var(--red)';
+}
+
+async function doEmailAuth() {
+  const errEl = document.getElementById('auth-err');
+  const btn   = document.getElementById('btn-email-auth');
+  errEl.textContent = '';
+
+  if (authMode === 'register') {
+    const nombre   = document.getElementById('auth-nombre').value.trim();
+    const email    = document.getElementById('auth-email').value.trim();
+    const username = document.getElementById('auth-username').value.trim().toLowerCase();
+    const telefono = document.getElementById('auth-telefono').value.trim();
+    const pass     = document.getElementById('auth-pass-reg').value;
+
+    if (!nombre)   { errEl.textContent = 'Ingresa tu nombre.'; return; }
+    if (!email)    { errEl.textContent = 'Ingresa tu correo.'; return; }
+    if (!username && !telefono) { errEl.textContent = 'Ingresa un usuario o teléfono.'; return; }
+    if (pass.length < 6) { errEl.textContent = 'La contraseña debe tener al menos 6 caracteres.'; return; }
+
+    // Check username/phone not already taken
+    if (username) {
+      const { data: existing } = await sb.from('perfiles').select('id').eq('username', username).maybeSingle();
+      if (existing) { errEl.textContent = 'Ese usuario ya está en uso.'; return; }
+    }
+    if (telefono) {
+      const { data: existing } = await sb.from('perfiles').select('id').eq('telefono', telefono).maybeSingle();
+      if (existing) { errEl.textContent = 'Ese teléfono ya está registrado.'; return; }
+    }
+
+    btn.disabled = true; btn.textContent = 'Creando cuenta...';
+    const { data, error } = await sb.auth.signUp({
+      email, password: pass,
+      options: { data: { full_name: nombre } }
+    });
+    if (error) { errEl.textContent = error.message; btn.disabled=false; btn.textContent='Crear cuenta'; return; }
+
+    // Save username/phone to perfiles
+    if (data.user) {
+      const perfilData = {
+        user_id: data.user.id,
+        email, nombre,
+        username: username || null,
+        telefono: telefono || null,
+        areas: [],
+        updated_at: new Date().toISOString()
+      };
+      const { error: perfilError } = await sb.from('perfiles').upsert(perfilData, { onConflict: 'user_id' });
+      if (perfilError) console.warn('Error guardando perfil:', perfilError);
+    }
+
+    btn.disabled = false; btn.textContent = 'Crear cuenta';
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = '✓ Cuenta creada. Revisa tu correo para confirmar.';
+
+  } else {
+    // LOGIN: buscar correo por usuario o teléfono
+    const loginId = document.getElementById('auth-login-id').value.trim();
+    const pass    = document.getElementById('auth-pass').value;
+
+    if (!loginId) { errEl.textContent = 'Ingresa tu usuario o teléfono.'; return; }
+    if (!pass)    { errEl.textContent = 'Ingresa tu contraseña.'; return; }
+
+    btn.disabled = true; btn.textContent = '...';
+
+    // Buscar en perfiles por username o telefono
+    const isPhone = /^\d+$/.test(loginId.replace(/[+\-\s]/g, ''));
+    let emailToUse = null;
+
+    if (isPhone) {
+      const { data } = await sb.from('perfiles').select('email').eq('telefono', loginId).maybeSingle();
+      emailToUse = data?.email;
+    }
+    if (!emailToUse) {
+      const { data } = await sb.from('perfiles').select('email').eq('username', loginId.toLowerCase()).maybeSingle();
+      emailToUse = data?.email;
+    }
+    // Fallback: intentar como email directo
+    if (!emailToUse && loginId.includes('@')) {
+      emailToUse = loginId;
+    }
+
+    if (!emailToUse) {
+      errEl.textContent = 'Usuario o teléfono no encontrado.';
+      btn.disabled = false; btn.textContent = 'Entrar';
+      return;
+    }
+
+    const { error } = await sb.auth.signInWithPassword({ email: emailToUse, password: pass });
+    btn.disabled = false; btn.textContent = 'Entrar';
+    if (error) { errEl.textContent = 'Contraseña incorrecta.'; }
+  }
+}
+
+
+async function loginGoogle() {
+  document.getElementById('auth-err').textContent = '';
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin }
+  });
+  if (error) document.getElementById('auth-err').textContent = error.message;
+}
+
+let _manualSignOut = false; // flag para diferenciar logout manual vs expiración
+
+async function doSignOut() {
+  _manualSignOut = true;
+  stopSessionKeepAlive();
+  clearFormState();
+  await sb.auth.signOut();
+  currentUser = null;
+  showView('auth');
+  showToast('Sesión cerrada');
+  _manualSignOut = false;
+}
+
+function goAdmin() { loadLogs(); loadEmpleados(); loadConfig(); showView('log'); }
+async function doLogout() { await doSignOut(); }
+function goLogin() { goAdmin(); }
+
+// Inicializar sesión
+sb.auth.onAuthStateChange(async (event, session) => {
+  console.log('Auth event:', event);
+  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+    if (session) {
+      startSessionKeepAlive();
+      onUserLoggedIn(session.user);
+    } else if (event === 'INITIAL_SESSION') {
+      // Solo mostrar auth si no hay token en la URL
+      if (!window.location.hash.includes('access_token')) {
+        showView('auth');
+      }
+    }
+  }
+  if (event === 'SIGNED_OUT') {
+    stopSessionKeepAlive();
+    // Si fue un cierre manual, redirigir normalmente
+    if (_manualSignOut) {
+      currentUser = null;
+      showView('auth');
+      return;
+    }
+    // Si NO fue manual (expiración inesperada), intentar recuperar sesión
+    console.warn('Sesión expirada, intentando recuperar...');
+    try {
+      const { data, error } = await sb.auth.refreshSession();
+      if (data?.session) {
+        console.log('Sesión recuperada exitosamente');
+        startSessionKeepAlive();
+        // No redirigir, mantener al usuario donde está
+        currentUser = data.session.user;
+        showToast('✓ Sesión renovada');
+        return;
+      }
+    } catch(e) { console.warn('No se pudo recuperar sesión:', e); }
+    // Si no se pudo recuperar, guardar estado y redirigir
+    saveFormState();
+    currentUser = null;
+    showView('auth');
+    showToast('Tu sesión expiró. Inicia sesión de nuevo.');
+  }
+});
+
+// Parsear token del hash manualmente si existe
+if (window.location.hash.includes('access_token')) {
+  const params = new URLSearchParams(window.location.hash.substring(1));
+  const access_token = params.get('access_token');
+  const refresh_token = params.get('refresh_token');
+  if (access_token && refresh_token) {
+    sb.auth.setSession({ access_token, refresh_token }).then(({ data: { session }, error }) => {
+      if (session) onUserLoggedIn(session.user);
+      else showView('auth');
+    });
+  }
+}
+
+
+async function onUserLoggedIn(user) {
+  currentUser = user;
+  // Load checklist items from DB first
+  await loadAreasFromDB();
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  const isAdmin = user.email === ADMIN_EMAIL;
+
+  // Actualizar barra usuario en home
+  document.getElementById('home-username').textContent = name;
+  const avatar = document.getElementById('home-avatar');
+  const pic = user.user_metadata?.avatar_url;
+  if (pic) {
+    avatar.outerHTML = `<img src="${pic}" class="auth-avatar" id="home-avatar" alt="${name}">`;
+  } else {
+    avatar.textContent = name.charAt(0).toUpperCase();
+  }
+  document.getElementById('admin-btn').style.display = isAdmin ? 'block' : 'none';
+
+  // Mostrar botón inventario si el usuario está asignado
+  const { data: invAsig } = await sb.from('inventario_asignados').select('id').eq('user_id', user.id).maybeSingle();
+  document.getElementById('inventario-btn').style.display = (invAsig || isAdmin) ? 'block' : 'none';
+  if (invAsig || isAdmin) actualizarMetaInventario();
+
+  // Cargar perfil desde Supabase
+  const { data: perfil } = await sb.from('perfiles').select('*').eq('user_id', user.id).single();
+
+  if (perfil && perfil.areas && perfil.areas.length > 0) {
+    await renderHomeGrid(perfil.areas);
+    // Intentar restaurar formulario si había uno en progreso
+    const backup = restoreFormState();
+    if (backup && backup.area && AREAS[backup.area]) {
+      showToast('Recuperando tu progreso...');
+      currentArea = backup.area;
+      await confirmarTurno(backup.turno || 'cierre');
+      // Restaurar valores del formulario
+      setTimeout(() => {
+        try {
+          if (backup.nombre) document.getElementById('nombre').value = backup.nombre;
+          if (backup.hora) document.getElementById('hora').value = backup.hora;
+          if (backup.notas) document.getElementById('notas').value = backup.notas;
+          if (backup.monto) document.getElementById('monto').value = backup.monto;
+          // Restaurar checks
+          if (backup.checkedItems) {
+            const items = document.querySelectorAll('#checklist-wrap .item');
+            backup.checkedItems.forEach((checked, i) => {
+              if (checked && items[i] && !items[i].classList.contains('checked')) {
+                items[i].classList.add('checked');
+              }
+            });
+            updateProg();
+          }
+          clearFormState();
+        } catch(e) { console.warn('Error restaurando formulario:', e); }
+      }, 500);
+    } else {
+      showView('home');
+    }
+  } else if (isAdmin) {
+    // Admin ve todas las áreas siempre
+    await renderHomeGrid(Object.keys(AREA_META));
+    showView('home');
+  } else {
+    // Primera vez: mostrar selector de perfil
+    showView('perfil');
+  }
+}
+
+async function abrirCambiarPerfil() {
+  const { data: perfil } = await sb.from('perfiles').select('areas').eq('user_id', currentUser.id).single();
+  const areasActuales = perfil?.areas || [];
+  selectedPerfilAreas = [...areasActuales];
+
+  // Render dinámico con áreas actuales marcadas
+  renderPerfilGrid(areasActuales);
+
+  document.getElementById('perfil-back-btn').style.display = 'inline-block';
+  document.getElementById('perfil-header-label').textContent = 'Editar perfil';
+  document.getElementById('perfil-header-sub').textContent = 'Cambia tus áreas para hoy';
+  document.getElementById('perfil-sub-text').textContent = 'Selecciona las áreas en las que trabajas hoy. Puedes volver a cambiarlas cuando quieras.';
+  document.getElementById('btn-perfil-save').disabled = areasActuales.length === 0;
+  document.getElementById('btn-perfil-save').textContent = 'Guardar cambios';
+
+  showView('perfil');
+}
+
+
+function togglePerfil(area, el) {
+  el.classList.toggle('selected');
+  if (el.classList.contains('selected')) {
+    if (!selectedPerfilAreas.includes(area)) selectedPerfilAreas.push(area);
+  } else {
+    selectedPerfilAreas = selectedPerfilAreas.filter(a => a !== area);
+  }
+  document.getElementById('btn-perfil-save').disabled = selectedPerfilAreas.length === 0;
+}
+
+async function guardarPerfil() {
+  if (!currentUser || selectedPerfilAreas.length === 0) return;
+  const btn = document.getElementById('btn-perfil-save');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
+  const name = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+  const { error } = await sb.from('perfiles').upsert({
+    user_id: currentUser.id,
+    email: currentUser.email,
+    nombre: name,
+    areas: selectedPerfilAreas,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+
+  if (error) {
+    btn.textContent = 'Guardar y continuar'; btn.disabled = false;
+    showToast('Error al guardar perfil');
+    return;
+  }
+  await renderHomeGrid(selectedPerfilAreas);
+  document.getElementById('btn-perfil-save').textContent = 'Guardar y continuar';
+  document.getElementById('perfil-back-btn').style.display = 'none';
+  document.getElementById('perfil-header-label').textContent = 'Primera vez';
+  document.getElementById('perfil-header-sub').textContent = 'Elige las áreas que manejas hoy';
+  document.getElementById('perfil-sub-text').textContent = 'Selecciona una o varias áreas. Puedes cambiarlo cuando quieras desde el inicio — si mañana haces barra en vez de cocina, solo actualiza tu perfil. 👌';
+  showToast('¡Perfil actualizado! ✓');
+  showView('home');
+}
+
+// ── HOME GRID DINÁMICO ────────────────────────────────────────────────────
+async function renderHomeGrid(areas) {
+  const grid = document.getElementById('home-grid');
+
+  // Fecha de hoy en formato dd/mm/yyyy (igual que como se guarda en cierres)
+  const hoy = new Date();
+  const fecha = String(hoy.getDate()).padStart(2,'0') + '/' + String(hoy.getMonth()+1).padStart(2,'0') + '/' + hoy.getFullYear();
+
+  // Cargar todos los registros de hoy de una sola vez
+  const { data: registrosHoy } = await sb.from('cierres').select('area,turno,hora').eq('fecha', fecha);
+
+  grid.innerHTML = areas.map(key => {
+    const a = AREA_META[key];
+    if (!a) return '';
+
+    const rApertura = registrosHoy?.find(r => r.area === key && r.turno === 'apertura');
+    const rCierre   = registrosHoy?.find(r => r.area === key && r.turno === 'cierre');
+
+    let statusHtml = '';
+    if (rApertura && rCierre) {
+      statusHtml = `<span style="font-size:11px;color:#4CAF7D;">🌅 ${rApertura.hora} &nbsp;·&nbsp; 🌙 ${rCierre.hora}</span>`;
+    } else if (rApertura) {
+      statusHtml = `<span style="font-size:11px;color:#4CAF7D;">🌅 Apertura · ${rApertura.hora}</span><br><span style="font-size:10px;color:var(--muted);">Cierre pendiente</span>`;
+    } else if (rCierre) {
+      statusHtml = `<span style="font-size:11px;color:#4CAF7D;">🌙 Cierre · ${rCierre.hora}</span><br><span style="font-size:10px;color:var(--muted);">Sin apertura registrada</span>`;
+    } else {
+      statusHtml = `<span style="font-size:11px;color:var(--muted);">Sin registros hoy</span>`;
+    }
+
+    return `<div class="area-card" onclick="openArea('${key}')" style="border-color:${a.color}33">
+      <div class="ac-icon">${a.icon}</div>
+      <div>
+        <div class="ac-name" style="color:${a.color}">${a.name}</div>
+        <div class="ac-count" style="line-height:1.6;">${statusHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ADMIN: EMPLEADOS ──────────────────────────────────────────────────────
+function showAdminTab(tab, btn) {
+  document.querySelectorAll('#log-filters .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('admin-tab-cierres').style.display = tab === 'cierres' ? 'block' : 'none';
+  document.getElementById('admin-tab-empleados').style.display = tab === 'empleados' ? 'block' : 'none';
+  document.getElementById('admin-tab-checklists').style.display = tab === 'checklists' ? 'block' : 'none';
+  document.getElementById('admin-tab-config').style.display = tab === 'config' ? 'block' : 'none';
+  document.getElementById('admin-tab-inventario').style.display = tab === 'inventario' ? 'block' : 'none';
+  if (tab === 'empleados') loadEmpleados();
+  if (tab === 'config') setTimeout(loadConfig, 50);
+  if (tab === 'checklists') loadChecklistEditor();
+  if (tab === 'inventario') loadAdminInventario();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+async function loadEmpleados() {
+  const wrap = document.getElementById('empleados-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="log-loading">Cargando...</div>';
+  const { data, error } = await sb.from('perfiles').select('*').order('nombre');
+  if (error || !data?.length) {
+    wrap.innerHTML = '<div class="log-empty">No hay empleados registrados aún.</div>';
+    return;
+  }
+  wrap.innerHTML = data.map(emp => {
+    const inicial = (emp.nombre || emp.email || '?').charAt(0).toUpperCase();
+    const tags = Object.keys(AREA_META).map(key => {
+      const a = AREA_META[key];
+      const active = (emp.areas || []).includes(key);
+      return `<span class="area-tag ${active?'active':''}" 
+        style="color:${a.color};border-color:${a.color}" 
+        onclick="toggleEmpleadoArea('${emp.user_id}', '${key}', this, ${JSON.stringify(emp.areas||[]).replace(/"/g,"'")})">
+        ${a.icon} ${a.name}
+      </span>`;
+    }).join('');
+    return `<div class="empleado-card">
+      <div class="empleado-hdr">
+        <div class="empleado-avatar">${inicial}</div>
+        <div class="empleado-info">
+          <div class="empleado-nombre">${emp.nombre || '—'}</div>
+          <div class="empleado-email">${emp.email || ''}</div>
+        </div>
+      </div>
+      <div class="empleado-areas">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleEmpleadoArea(userId, area, el, currentAreas) {
+  const areas = Array.isArray(currentAreas) ? [...currentAreas] : [];
+  const idx = areas.indexOf(area);
+  if (idx >= 0) areas.splice(idx, 1);
+  else areas.push(area);
+
+  el.classList.toggle('active');
+  const { error } = await sb.from('perfiles').update({ areas, updated_at: new Date().toISOString() }).eq('user_id', userId);
+  if (error) { el.classList.toggle('active'); showToast('Error al actualizar'); }
+  else showToast('Perfil actualizado ✓');
+}
+
+// ── LOG ───────────────────────────────────────────────────────────────────
+async function loadLogs() {
+  document.getElementById('log-wrap').innerHTML = '<div class="log-loading">Cargando registros...</div>';
+  const { data, error } = await sb.from('cierres').select('*').order('created_at', { ascending: false }).limit(200);
+  if (error) {
+    document.getElementById('log-wrap').innerHTML = '<div class="log-empty">Error al cargar registros.</div>';
+    return;
+  }
+  allLogs = data || [];
+  renderLogs(allLogs);
+}
+
+function filterLog(area, btn) {
+  currentFilter = area;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = area === 'all' ? allLogs : allLogs.filter(e => e.area === area);
+  renderLogs(filtered);
+}
+
+function renderLogs(logs) {
+  const wrap = document.getElementById('log-wrap');
+  if (!logs.length) {
+    wrap.innerHTML = '<div class="log-empty">No hay registros aun.</div>';
+    return;
+  }
+
+  // Group by fecha
+  const groups = {};
+  const order = [];
+  logs.forEach(e => {
+    const key = e.fecha || new Date(e.created_at).toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(e);
+  });
+
+  wrap.innerHTML = order.map(fecha => {
+    // Format date nicely: "Jueves 06 Mar 2026"
+    const parts = fecha.split('/');
+    const dateObj = parts.length === 3 ? new Date(parts[2], parts[1]-1, parts[0]) : new Date(fecha);
+    const fechaLabel = dateObj.toLocaleDateString('es-VE', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+    const fechaCap = fechaLabel.charAt(0).toUpperCase() + fechaLabel.slice(1);
+
+    const entries = groups[fecha].map(e => {
+      const hora = e.hora || new Date(e.created_at).toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+      const rows = (e.items||[]).map(i =>
+        `<div class="log-row ${i.done?'ok':'fail'}">
+          <span class="log-row-badge">${i.done?'OK':'--'}</span>
+          <span>${i.label}</span>
+        </div>`
+      ).join('');
+
+      return `<div class="log-entry">
+        <div class="log-entry-hdr">
+          <div class="log-dot2" style="background:${e.area_color}"></div>
+          <div class="log-area-name" style="color:${e.area_color}">${e.area_nombre}</div>
+          <div class="log-who">${e.responsable}</div>
+          <div class="log-hora">${hora}</div>
+        </div>
+        <div class="log-rows">${rows}</div>
+        <div class="log-footer">
+          <div class="log-status ${e.pendientes===0?'ok':'fail'}">${e.pendientes===0?'Cierre completo':'Incompleto — '+e.pendientes+' pendiente'+(e.pendientes>1?'s':'')}</div>
+          ${e.monto?`<div class="log-monto">Efectivo: $${e.monto}</div>`:''}
+          ${e.notas?`<div class="log-note">"${e.notas}"</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="log-date-group">
+      <div class="log-date-label">
+        <div class="log-date-line"></div>
+        <span>${fechaCap}</span>
+        <div class="log-date-line"></div>
+      </div>
+      ${entries}
+    </div>`;
+  }).join('');
+}
+
+// ── CHECKLIST EDITOR ──────────────────────────────────────────────────────
+const AREA_ORDER = ['barra-diurna','barra-nocturna','cocina','sala','caja'];
+
+async function loadChecklistEditor() {
+  const wrap = document.getElementById('checklist-editor-wrap');
+  wrap.innerHTML = '<div class="log-loading">Cargando...</div>';
+  
+  const { data, error } = await sb.from('checklist_items').select('*');
+  if (error) { wrap.innerHTML = '<div class="log-empty">Error al cargar.</div>'; return; }
+  
+  // Build map
+  const map = {};
+  (data || []).forEach(r => map[r.area] = r);
+  
+  wrap.innerHTML = AREA_ORDER.map(area => {
+    const a = AREA_META[area];
+    const items = map[area]?.items || AREAS[area]?.items || [];
+    const itemsHtml = items.map((item, i) => `
+      <div class="cl-item-row" data-area="${area}" data-index="${i}">
+        <span class="cl-drag">⠿</span>
+        <input type="text" class="cl-item-input" value="${item.replace(/"/g,'&quot;')}" 
+          onchange="updateChecklistItem('${area}', ${i}, this.value)"
+          style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;">
+        <button onclick="deleteChecklistItem('${area}', ${i})" 
+          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;flex-shrink:0;" title="Eliminar">✕</button>
+      </div>`).join('');
+
+    return `<div class="empleado-card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">${a.icon}</span>
+        <span style="font-size:14px;font-weight:700;color:${a.color};">${a.name}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;" id="cl-count-${area}">${items.length} ítems</span>
+      </div>
+      <div id="cl-items-${area}" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">${itemsHtml}</div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="cl-new-${area}" placeholder="Nuevo ítem..." 
+          style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;"
+          onkeydown="if(event.key==='Enter') addChecklistItem('${area}')">
+        <button onclick="addChecklistItem('${area}')"
+          style="padding:9px 16px;background:var(--gold);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">
+          + Agregar
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function getChecklistItems(area) {
+  const { data } = await sb.from('checklist_items').select('items').eq('area', area).single();
+  return data?.items || AREAS[area]?.items || [];
+}
+
+async function saveChecklistItems(area, items) {
+  await sb.from('checklist_items').upsert({ area, items, updated_at: new Date().toISOString() }, { onConflict: 'area' });
+  // Update local AREAS object so the form uses new items immediately
+  AREAS[area].items = items;
+  // Update count display
+  const countEl = document.getElementById('cl-count-' + area);
+  if (countEl) countEl.textContent = items.length + ' ítems';
+  // Update AREA_META count
+  if (AREA_META[area]) AREA_META[area].count = items.length + ' ítems';
+}
+
+async function addChecklistItem(area) {
+  const input = document.getElementById('cl-new-' + area);
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const items = await getChecklistItems(area);
+  items.push(text);
+  await saveChecklistItems(area, items);
+  input.value = '';
+  
+  // Add row to DOM without full reload
+  const container = document.getElementById('cl-items-' + area);
+  const i = items.length - 1;
+  const div = document.createElement('div');
+  div.className = 'cl-item-row';
+  div.dataset.area = area;
+  div.dataset.index = i;
+  div.innerHTML = `
+    <span class="cl-drag">⠿</span>
+    <input type="text" class="cl-item-input" value="${text.replace(/"/g,'&quot;')}"
+      onchange="updateChecklistItem('${area}', ${i}, this.value)"
+      style="flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 12px;outline:none;">
+    <button onclick="deleteChecklistItem('${area}', ${i})"
+      style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 4px;flex-shrink:0;">✕</button>`;
+  container.appendChild(div);
+  showToast('✓ Ítem agregado');
+}
+
+async function updateChecklistItem(area, index, value) {
+  const items = await getChecklistItems(area);
+  items[index] = value;
+  await saveChecklistItems(area, items);
+  showToast('✓ Ítem actualizado');
+}
+
+async function deleteChecklistItem(area, index) {
+  const items = await getChecklistItems(area);
+  items.splice(index, 1);
+  await saveChecklistItems(area, items);
+  loadChecklistEditor(); // Reload to fix indices
+  showToast('✓ Ítem eliminado');
+}
+
+// Load checklist items from DB on app start (override hardcoded AREAS + cargar áreas custom)
+async function loadAreasFromDB() {
+  const { data } = await sb.from('checklist_items').select('*');
+  if (data) {
+    data.forEach(r => {
+      if (AREAS[r.area]) {
+        // Área fija: actualizar ítems
+        AREAS[r.area].items = r.items || [];
+        if (AREA_META[r.area]) AREA_META[r.area].count = (r.items||[]).length + ' ítems';
+      } else if (r.meta_nombre) {
+        // Área custom: cargarla completa
+        AREAS[r.area] = { name: r.meta_nombre, color: r.meta_color || '#C8962A', items: r.items || [] };
+        AREA_META[r.area] = { name: r.meta_nombre, icon: r.meta_icono || '📋', color: r.meta_color || '#C8962A', count: (r.items||[]).length + ' ítems', _isCustom: true };
+      }
+    });
+  }
+  renderPerfilGrid();
+  renderCierresFilter();
+}
+
+function renderPerfilGrid(areasActuales = []) {
+  const grid = document.getElementById('perfil-grid');
+  if (!grid) return;
+  const checkSVG = `<svg width="10" height="8" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L3.8 7.5L10 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  grid.innerHTML = Object.keys(AREA_META).map(key => {
+    const a = AREA_META[key];
+    const isSelected = areasActuales.includes(key);
+    return `<div class="perfil-option ${isSelected ? 'selected' : ''}" onclick="togglePerfil('${key}', this)" data-area="${key}" style="border-color:${a.color}22">
+      <div class="po-check">${checkSVG}</div>
+      <div class="po-icon">${a.icon}</div>
+      <div class="po-name" style="color:${a.color}">${a.name}</div>
+      <div class="po-count">${a.count}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderCierresFilter() {
+  const wrap = document.getElementById('cierres-filter-wrap');
+  if (!wrap) return;
+  // Keep "Todos" button, rebuild area filters
+  wrap.innerHTML = `<button class="filter-btn active" style="flex:none;border:1px solid var(--border);border-radius:8px;padding:7px 12px;" onclick="filterLog('all', this)">Todos</button>` +
+    Object.keys(AREA_META).map(key => {
+      const a = AREA_META[key];
+      return `<button class="filter-btn" style="flex:none;border:1px solid var(--border);border-radius:8px;padding:7px 12px;" onclick="filterLog('${key}', this)">${a.icon} ${a.name}</button>`;
+    }).join('');
+}
+
+// ── CHECKLIST EDITOR ──────────────────────────────────────────────────────
+let currentEditorArea = 'barra-diurna';
+let editorItems = [];
+let editorInputs = [];
+let nuevaAreaColor = '#C8962A';
+
+// --- Nueva área ---
+function mostrarFormNuevaArea() {
+  document.getElementById('form-nueva-area').style.display = 'block';
+  document.getElementById('btn-nueva-area').style.display = 'none';
+  document.querySelectorAll('.color-opt').forEach((o,i) => o.style.borderColor = i===0 ? 'white' : 'transparent');
+  nuevaAreaColor = '#C8962A';
+}
+function ocultarFormNuevaArea() {
+  document.getElementById('form-nueva-area').style.display = 'none';
+  document.getElementById('btn-nueva-area').style.display = 'inline-block';
+  document.getElementById('nueva-area-nombre').value = '';
+  document.getElementById('nueva-area-icono').value = '';
+}
+function selectNuevaAreaColor(color, el) {
+  nuevaAreaColor = color;
+  document.querySelectorAll('.color-opt').forEach(o => o.style.borderColor = 'transparent');
+  el.style.borderColor = 'white';
+}
+
+async function crearNuevaArea() {
+  const nombre = document.getElementById('nueva-area-nombre').value.trim();
+  const icono  = document.getElementById('nueva-area-icono').value.trim() || '📋';
+  if (!nombre) { showToast('Ingresa un nombre'); return; }
+
+  const key = nombre.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+  // Verificar que no exista ya
+  const { data: existe } = await sb.from('checklist_items').select('id').eq('area', key).maybeSingle();
+  if (existe) { showToast('Ya existe un área con ese nombre'); return; }
+
+  // Insert en checklist_items usando las columnas que ya existen
+  const { error } = await sb.from('checklist_items').insert({
+    area: key,
+    tipo: 'apertura',
+    items: [],
+    meta_nombre: nombre,
+    meta_icono: icono,
+    meta_color: nuevaAreaColor,
+    updated_at: new Date().toISOString()
+  });
+  if (error) { showToast('Error: ' + (error.message || JSON.stringify(error))); return; }
+
+  // Agregar a objetos locales
+  AREAS[key] = { name: nombre, color: nuevaAreaColor, items: [] };
+  AREA_META[key] = { name: nombre, icon: icono, color: nuevaAreaColor, count: '0 ítems' };
+
+  ocultarFormNuevaArea();
+  renderAreaTabButtons();
+  renderPerfilGrid();
+  renderCierresFilter();
+  await selectAreaEditor(key, null);
+  showToast('✓ Área "' + nombre + '" creada');
+}
+
+// --- Eliminar área ---
+async function confirmarEliminarArea() {
+  const a = AREA_META[currentEditorArea];
+  if (!a) return;
+  if (!confirm(`¿Eliminar el área "${a.name}"?\n\nSe borrarán todos sus ítems y campos adicionales. Esta acción no se puede deshacer.`)) return;
+
+  await sb.from('checklist_items').delete().eq('area', currentEditorArea);
+  await sb.from('area_inputs').delete().eq('area', currentEditorArea);
+
+  delete AREAS[currentEditorArea];
+  delete AREA_META[currentEditorArea];
+
+  showToast('Área eliminada');
+  currentEditorArea = Object.keys(AREA_META)[0];
+  renderAreaTabButtons();
+  renderPerfilGrid();
+  renderCierresFilter();
+  if (currentEditorArea) await selectAreaEditor(currentEditorArea, null);
+}
+
+// --- Render botones de área dinámicamente ---
+function renderAreaTabButtons() {
+  const wrap = document.getElementById('area-tab-buttons');
+  if (!wrap) return;
+  wrap.innerHTML = Object.keys(AREA_META).map(key => {
+    const a = AREA_META[key];
+    const isActive = key === currentEditorArea;
+    return `<button class="area-tab-btn" data-area="${key}"
+      onclick="selectAreaEditor('${key}', this)"
+      style="padding:7px 12px;border:1.5px solid ${isActive ? a.color : 'var(--border)'};border-radius:8px;background:transparent;color:${isActive ? a.color : 'var(--muted)'};font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">
+      ${a.icon} ${a.name}
+    </button>`;
+  }).join('');
+}
+
+async function loadChecklistEditor() {
+  renderAreaTabButtons();
+  await selectAreaEditor(currentEditorArea, null);
+}
+
+let currentEditorTipo = 'apertura';
+
+function selectTipoEditor(tipo) {
+  currentEditorTipo = tipo;
+  const tabAp = document.getElementById('editor-tab-apertura');
+  const tabCi = document.getElementById('editor-tab-cierre');
+  tabAp.style.background = tipo === 'apertura' ? 'var(--card)' : 'transparent';
+  tabAp.style.color = tipo === 'apertura' ? 'var(--text)' : 'var(--muted)';
+  tabAp.style.boxShadow = tipo === 'apertura' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none';
+  tabCi.style.background = tipo === 'cierre' ? 'var(--card)' : 'transparent';
+  tabCi.style.color = tipo === 'cierre' ? 'var(--text)' : 'var(--muted)';
+  tabCi.style.boxShadow = tipo === 'cierre' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none';
+  // Update inputs badge
+  const badge = document.getElementById('inputs-turno-badge');
+  if (badge) badge.textContent = tipo === 'apertura' ? '🌅 Apertura' : '🌙 Cierre';
+  loadEditorForTipo();
+}
+
+async function loadEditorForTipo() {
+  // Reload checklist items
+  const { data: ciData } = await sb.from('checklist_items').select('items').eq('area', currentEditorArea).eq('tipo', currentEditorTipo).maybeSingle();
+  editorItems = ciData?.items || [];
+  renderEditorItems();
+  // Reload inputs for this turno
+  const { data: inData } = await sb.from('area_inputs').select('*').eq('area', currentEditorArea).eq('turno', currentEditorTipo).order('orden');
+  editorInputs = inData || [];
+  renderEditorInputs();
+}
+
+async function selectAreaEditor(area, btn) {
+  currentEditorArea = area;
+  // Update button styles
+  document.querySelectorAll('.area-tab-btn').forEach(b => {
+    const bArea = b.dataset.area;
+    const bColor = AREA_META[bArea]?.color || 'var(--border)';
+    b.style.borderColor = bArea === area ? bColor : 'var(--border)';
+    b.style.color = bArea === area ? bColor : 'var(--muted)';
+  });
+
+  // Reset to current tab - this loads both items and inputs
+  selectTipoEditor(currentEditorTipo);
+}
+
+function renderEditorItems() {
+  const wrap = document.getElementById('checklist-editor-items');
+  if (!editorItems.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Sin ítems aún.</div>'; return; }
+  wrap.innerHTML = editorItems.map((item, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);width:18px;flex-shrink:0;">${i+1}.</span>
+      <input type="text" value="${item.replace(/"/g, '&quot;')}" onchange="editorItems[${i}]=this.value"
+        style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;outline:none;">
+      <button onclick="moverItem(${i},-1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;" title="Subir">↑</button>
+      <button onclick="moverItem(${i},1)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 4px;" title="Bajar">↓</button>
+      <button onclick="eliminarItem(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 4px;" title="Eliminar">✕</button>
+    </div>`).join('');
+  // Save button
+  wrap.innerHTML += `<button onclick="guardarItems()" style="width:100%;margin-top:12px;padding:11px;background:var(--green);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">💾 Guardar cambios</button>`;
+}
+
+function renderEditorInputs() {
+  const wrap = document.getElementById('inputs-editor-items');
+  if (!editorInputs.length) { wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Sin campos adicionales.</div>'; return; }
+  wrap.innerHTML = editorInputs.map((inp, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:11px;color:var(--muted);background:var(--border);padding:3px 7px;border-radius:4px;">${inp.tipo === "dinero" ? "$" : inp.tipo === "number" ? "#" : "txt"}</span>
+      <span style="flex:1;font-size:13px;color:var(--text);">${inp.label}</span>
+      <button onclick="eliminarInput('${inp.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:16px;padding:2px 4px;">✕</button>
+    </div>`).join('');
+}
+
+function agregarItem() {
+  const input = document.getElementById('new-item-input');
+  const val = input.value.trim();
+  if (!val) return;
+  editorItems.push(val);
+  input.value = '';
+  renderEditorItems();
+}
+
+function eliminarItem(i) {
+  editorItems.splice(i, 1);
+  renderEditorItems();
+}
+
+function moverItem(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= editorItems.length) return;
+  [editorItems[i], editorItems[j]] = [editorItems[j], editorItems[i]];
+  renderEditorItems();
+}
+
+async function guardarItems() {
+  const { data: existing } = await sb.from('checklist_items').select('id').eq('area', currentEditorArea).eq('tipo', currentEditorTipo).maybeSingle();
+  let error;
+  if (existing) {
+    ({ error } = await sb.from('checklist_items').update(
+      { items: editorItems, updated_at: new Date().toISOString() }
+    ).eq('area', currentEditorArea).eq('tipo', currentEditorTipo));
+  } else {
+    ({ error } = await sb.from('checklist_items').insert(
+      { area: currentEditorArea, tipo: currentEditorTipo, items: editorItems, updated_at: new Date().toISOString() }
+    ));
+  }
+  if (error) { showToast('Error al guardar'); return; }
+  if (AREAS[currentEditorArea]) AREAS[currentEditorArea].items = [...editorItems];
+  showToast('✓ Checklist guardado');
+}
+
+async function agregarInput() {
+  const label = document.getElementById('new-input-label').value.trim();
+  const tipo = document.getElementById('new-input-tipo').value;
+  if (!label) return;
+  const { data, error } = await sb.from('area_inputs').insert({
+    area: currentEditorArea, label, tipo, turno: currentEditorTipo, orden: editorInputs.length
+  }).select().single();
+  if (error) { showToast('Error al agregar'); return; }
+  document.getElementById('new-input-label').value = '';
+  editorInputs.push(data);
+  renderEditorInputs();
+  showToast('✓ Campo agregado');
+}
+
+async function eliminarInput(id) {
+  const { error } = await sb.from('area_inputs').delete().eq('id', id);
+  if (error) { showToast('Error al eliminar'); return; }
+  editorInputs = editorInputs.filter(i => i.id !== id);
+  renderEditorInputs();
+  showToast('Campo eliminado');
+}
+
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
